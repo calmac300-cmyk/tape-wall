@@ -207,6 +207,9 @@ dialog.jcard::backdrop{background:rgba(12,7,3,.62)}
 .swatches{display:flex;flex-wrap:wrap;gap:9px;align-items:center}
 .sw{width:34px;height:34px;border-radius:50%;border:2px solid rgba(0,0,0,.2);padding:0;cursor:pointer;background:var(--c)}
 .sw.on{outline:3px solid var(--paper-ink);outline-offset:2px}
+.tsw{width:34px;height:34px;border-radius:50%;border:2px solid rgba(0,0,0,.2);padding:0;cursor:pointer;background:var(--c)}
+.tsw.auto{width:auto;border-radius:17px;padding:0 14px;background:var(--paper-ink);color:var(--paper);font-size:14px;font-weight:600}
+.tsw.on{outline:3px solid var(--paper-ink);outline-offset:2px}
 .custom{display:flex;align-items:center;gap:6px;font-size:15px;color:var(--paper-muted)}
 .custom input{width:38px;height:34px;padding:0;border:0;background:transparent;cursor:pointer}
 .fonts{display:flex;flex-wrap:wrap;gap:8px}
@@ -411,6 +414,7 @@ function textOn(hex) {
   const [r, g, b] = [0, 2, 4].map(i => parseInt(h.slice(i, i + 2), 16) / 255).map(v => v <= .03928 ? v / 12.92 : Math.pow((v + .055) / 1.055, 2.4));
   return (0.2126 * r + 0.7152 * g + 0.0722 * b) > 0.28 ? '#1b1410' : '#f6f1e7';
 }
+const textColorOf = a => a.textColor || textOn(a.color);
 const FONTS = {
   type:   { label: 'Typewriter', f: 'var(--type)', fs: '14.5px', fw: 400 },
   marker: { label: 'Marker', f: '"Permanent Marker","Comic Sans MS",cursive', fs: '14px', fw: 400 },
@@ -572,7 +576,7 @@ function spineHTML(a) {
   const artURL = pixelArtDataURL(a.pixelArt);
   const cols = artURL ? '30px 42px 1fr' : '42px 1fr';
   const badge = artURL ? `<span class="art" style="background-image:url('${artURL}')"></span>` : '';
-  return `<button class="spine${inDeck ? ' in-deck' : ''}${sel ? ' sel' : ''}" data-id="${a.id}" style="--c:${a.color};--t:${textOn(a.color)};grid-template-columns:${cols};${fontVars(a)}"${editing ? ` aria-pressed="${sel}"` : ''} aria-label="${esc(a.artist)}, ${esc(a.title)}${inDeck ? ', in the deck' : ''}">${badge}<span class="yr">${esc(yr)}</span><span class="lbl">${inDeck && !editing ? 'In the deck' : `${esc(a.artist)}<span class="al">${esc(a.title)}</span>`}</span></button>`;
+  return `<button class="spine${inDeck ? ' in-deck' : ''}${sel ? ' sel' : ''}" data-id="${a.id}" style="--c:${a.color};--t:${textColorOf(a)};grid-template-columns:${cols};${fontVars(a)}"${editing ? ` aria-pressed="${sel}"` : ''} aria-label="${esc(a.artist)}, ${esc(a.title)}${inDeck ? ', in the deck' : ''}">${badge}<span class="yr">${esc(yr)}</span><span class="lbl">${inDeck && !editing ? 'In the deck' : `${esc(a.artist)}<span class="al">${esc(a.title)}</span>`}</span></button>`;
 }
 function sortTrackIds(ids) {
   ids.sort((x, y) => {
@@ -689,7 +693,7 @@ function sidesOf(a) {
 function openCard(id) {
   const a = albums.find(x => x.id === id); if (!a) return;
   const { ts, split } = sidesOf(a);
-  const url = coverOf(a), t = textOn(a.color), pixURL = pixelArtDataURL(a.pixelArt);
+  const url = coverOf(a), t = textColorOf(a), pixURL = pixelArtDataURL(a.pixelArt);
   const cover = url
     ? `<div class="cover" style="--c:${a.color};background-image:url('${url}')"></div>`
     : pixURL
@@ -742,6 +746,7 @@ document.addEventListener('pointerup', () => paintingPix = false);
 function openEditor(a) {
   const draft = {
     title: a.title, artist: a.artist, year: a.year || '', color: a.color, font: a.font || 'type', realTape: !!a.realTape,
+    textColor: a.textColor || null,
     pixelArt: { size: PIX_N, cells: (a.pixelArt && a.pixelArt.cells) ? a.pixelArt.cells.slice() : new Array(PIX_N * PIX_N).fill(null) },
     pixColor: PALETTE[0], pixErase: false
   };
@@ -758,6 +763,12 @@ function openEditor(a) {
       <fieldset><legend>Label color</legend><div class="swatches">
         ${colors.map(c => `<button type="button" class="sw" data-color="${c}" style="--c:${c}" aria-label="Color ${c}"></button>`).join('')}
         <label class="custom">Custom<input type="color" id="edColor" value="${draft.color}"></label>
+      </div></fieldset>
+      <fieldset><legend>Text color</legend><div class="swatches">
+        <button type="button" class="tsw auto" data-textcolor="">Auto</button>
+        <button type="button" class="tsw" data-textcolor="#1b1410" style="--c:#1b1410" aria-label="Dark text"></button>
+        <button type="button" class="tsw" data-textcolor="#f6f1e7" style="--c:#f6f1e7" aria-label="Light text"></button>
+        <label class="custom">Custom<input type="color" id="edTextColor" value="${draft.textColor || textOn(draft.color)}"></label>
       </div></fieldset>
       <fieldset><legend>Lettering</legend><div class="fonts">
         ${Object.entries(FONTS).map(([k, F]) => `<button type="button" class="fontopt" data-font="${k}" style="--f:${F.f};--fs:${F.fs};--fw:${F.fw}">${F.label}</button>`).join('')}
@@ -781,11 +792,13 @@ function openEditor(a) {
       </div>
     </div>`;
   const paint = () => {
-    const prev = $('#edPrev'), F = FONTS[draft.font];
-    prev.style.cssText = `--c:${draft.color};--t:${textOn(draft.color)};--f:${F.f};--fs:${F.fs};--fw:${F.fw}`;
+    const prev = $('#edPrev'), F = FONTS[draft.font], tc = draft.textColor || textOn(draft.color);
+    prev.style.cssText = `--c:${draft.color};--t:${tc};--f:${F.f};--fs:${F.fs};--fw:${F.fw}`;
     prev.querySelector('.yr').textContent = /\d{4}/.test(draft.year) ? '’' + draft.year.slice(-2) : '';
     prev.querySelector('.lbl').innerHTML = `${esc(draft.artist || 'Unknown artist')}<span class="al">${esc(draft.title || 'Untitled')}</span>`;
     dlg.querySelectorAll('.swatches .sw').forEach(b => b.classList.toggle('on', b.dataset.color.toLowerCase() === draft.color.toLowerCase()));
+    dlg.querySelectorAll('.tsw').forEach(b => b.classList.toggle('on', (b.dataset.textcolor || null) === (draft.textColor ? draft.textColor.toLowerCase() : null)));
+    $('#edTextColor').value = tc;
     dlg.querySelectorAll('.fontopt').forEach(b => { b.classList.toggle('on', b.dataset.font === draft.font); b.setAttribute('aria-pressed', b.dataset.font === draft.font); });
   };
   const renderGrid = () => {
@@ -806,6 +819,7 @@ function openEditor(a) {
   $('#edArtist').oninput = e => { draft.artist = e.target.value; paint(); };
   $('#edYear').oninput = e => { draft.year = e.target.value.replace(/\D/g, '').slice(0, 4); e.target.value = draft.year; paint(); };
   $('#edColor').oninput = e => { draft.color = e.target.value; paint(); };
+  $('#edTextColor').oninput = e => { draft.textColor = e.target.value; paint(); };
   $('#edReal').onchange = e => { draft.realTape = e.target.checked; };
   $('#pixColor').oninput = e => { draft.pixColor = e.target.value; draft.pixErase = false; paintTools(); };
   const grid = $('#pixGrid');
@@ -822,6 +836,7 @@ function openEditor(a) {
   dlg.onclick = async e => {
     if (e.target === dlg) { dlg.close(); return; }
     const sw = e.target.closest('.swatches .sw'); if (sw) { draft.color = sw.dataset.color; $('#edColor').value = draft.color; paint(); return; }
+    const tsw = e.target.closest('.tsw'); if (tsw) { draft.textColor = tsw.dataset.textcolor || null; paint(); return; }
     const fo = e.target.closest('.fontopt'); if (fo) { draft.font = fo.dataset.font; paint(); return; }
     const pxsw = e.target.closest('.pxsw'); if (pxsw) { draft.pixColor = pxsw.dataset.pcolor; draft.pixErase = false; $('#pixColor').value = draft.pixColor; paintTools(); return; }
     if (e.target.closest('#pixEraser')) { draft.pixErase = true; paintTools(); return; }
@@ -837,7 +852,7 @@ function openEditor(a) {
       a.title = draft.title.trim() || a.title;
       a.artist = draft.artist.trim() || a.artist;
       a.year = /^\d{4}$/.test(draft.year) ? draft.year : '';
-      a.color = draft.color; a.font = draft.font; a.realTape = draft.realTape;
+      a.color = draft.color; a.font = draft.font; a.realTape = draft.realTape; a.textColor = draft.textColor;
       a.pixelArt = draft.pixelArt.cells.some(Boolean) ? { size: PIX_N, cells: draft.pixelArt.cells } : null;
       a.key = norm(a.artist) + '|' + norm(a.title);
       await store.put('albums', a);
@@ -1014,7 +1029,7 @@ function updateNow() {
   $('#nowSub').textContent = who + ', ' + a.title;
   $('#sideBadge').textContent = side;
   $('#tapeLabel').style.fill = a.color;
-  const tc = textOn(a.color);
+  const tc = textColorOf(a);
   $('#tapeText').style.fill = tc; $('#tapeSide').style.fill = tc;
   $('#tapeText').style.fontFamily = fontOf(a).f;
   $('#realNote').hidden = !a.realTape; $('#modeWrap').hidden = !!a.realTape;

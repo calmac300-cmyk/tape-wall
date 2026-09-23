@@ -16,7 +16,7 @@ What it does today:
 - **Storage:** Files and metadata are kept in IndexedDB in the browser (stores: albums, tracks, blobs).
 - **The wall:** Towers of 10 spines, sortable by artist, year, or recently added. A spine's color comes from its cover art.
 - **J-card:** Cover art, Side A/B split at the track boundary nearest half the running time, play either side or any track, edit label, remove tape.
-- **Label editor:** Album, artist, and year text; label color (presets or custom); lettering (Typewriter, Marker, Ballpoint, Printed); a "recorded from a real cassette" flag.
+- **Label editor:** Album, artist, and year text; label color (presets or custom); text color (Auto — computed from label color for contrast — or a manual override, presets or custom); lettering (Typewriter, Marker, Ballpoint, Printed); a "recorded from a real cassette" flag.
 - **Edit wall mode:** Multi-select to remove tapes or combine several into one.
 - **Deck:** SVG cassette with reels whose tape packs shrink and grow with side progress, and auto-reverse from side A to side B. Controls: previous, play/pause, next, flip, eject, and a seek bar. Lock-screen controls use the Media Session API.
 - **Sound menu:** A Web Audio "tape" effect (lowpass, saturation, hiss, wow and flutter via a modulated delay) with Clean, Normal, Chrome, and Worn presets. Tapes flagged as real cassette rips always play clean.
