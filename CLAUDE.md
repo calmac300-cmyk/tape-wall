@@ -23,6 +23,7 @@ What it does today:
 - **Resume playback:** Position is saved per tape (throttled while playing, and on pause/eject) as `lastTrackId`/`lastPos`/`lastPlayed` on the album record. The J-card shows a "Resume" button when a saved position exists; it's cleared when a tape plays to the end.
 - **Pull a random tape:** Header button picks a random tape (excluding whichever is currently in the deck, if any) and inserts it, resuming from its saved position if there is one.
 - **Sort by "Last played":** Uses the same `lastPlayed` timestamp; unplayed tapes sort to the bottom.
+- **Pixel art:** A 12×12 tap-to-paint grid in the label editor (`album.pixelArt = {size, cells}`, rendered to a crisp SVG data URI, cached by content). Used as the J-card cover only when there's no embedded artwork (real cover art always wins), and as a small badge on the wall spine (spine gains a third grid column when art is present). Intentionally fixed grid size and a fixed palette + custom color + eraser — no undo history, no resize.
 
 ## Known limitations of the prototype
 
@@ -41,4 +42,4 @@ What it does today:
   - search/filter on the wall (once the library grows)
   - a split tool for combined tapes
 
-Decided [2026-09-23]: PWA over Expo/React Native, despite the iOS background-playback caveat above. Also added that day: resume-per-tape, "pull a random tape" button, and "Last played" sort.
+Decided [2026-09-23]: PWA over Expo/React Native, despite the iOS background-playback caveat above. Also added that day: resume-per-tape, "pull a random tape" button, "Last played" sort, and hand-paintable pixel art (J-card cover fallback + wall spine badge — deliberately not on the deck's cassette graphic itself).

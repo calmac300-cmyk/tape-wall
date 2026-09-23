@@ -114,6 +114,7 @@ button,select{font:inherit}
 .spine .al{opacity:.72;margin-left:.7em}
 .spine.in-deck{background:rgba(0,0,0,.5);color:rgba(255,255,255,.4);box-shadow:inset 0 3px 7px rgba(0,0,0,.7)}
 .spine.in-deck .yr{background:transparent}
+.spine .art{align-self:center;justify-self:center;width:26px;height:26px;border-radius:2px;background-size:cover;image-rendering:pixelated;box-shadow:0 0 0 1px rgba(0,0,0,.35)}
 
 .empty{max-width:560px;margin:10px auto 0;padding:0 18px calc(var(--deck-h,210px) + 36px)}
 .empty .tower{max-width:320px;margin-bottom:26px}
@@ -163,6 +164,15 @@ dialog.jcard::backdrop{background:rgba(12,7,3,.62)}
 }
 .cover.gen b{font-family:var(--type);font-weight:400;font-size:32px;line-height:1.1}
 .cover.gen span{font-size:20px;margin-top:6px}
+.cover.pixel{background-size:72%;image-rendering:pixelated}
+.pixgrid{display:grid;gap:1px;background:rgba(0,0,0,.25);border:1px solid rgba(0,0,0,.25);width:min(280px,100%);aspect-ratio:1;margin-top:8px;touch-action:none;cursor:crosshair}
+.pixcell{background:repeating-conic-gradient(#d8d2c2 0% 25%,#c9c2ae 0% 50%) 50%/10px 10px}
+.pixtools{display:flex;flex-wrap:wrap;align-items:center;gap:9px;margin-top:9px}
+.pxsw{width:26px;height:26px;border-radius:50%;border:2px solid rgba(0,0,0,.2);padding:0;cursor:pointer;background:var(--c)}
+.pxsw.on{outline:3px solid var(--paper-ink);outline-offset:2px}
+.pixtools .eraser{width:26px;height:26px;border-radius:50%;border:2px solid rgba(0,0,0,.2);padding:0;cursor:pointer;background:repeating-conic-gradient(#d8d2c2 0% 25%,#c9c2ae 0% 50%) 50%/8px 8px}
+.pixtools .eraser.on{outline:3px solid var(--paper-ink);outline-offset:2px}
+.pixtools .clear{margin-left:auto;background:transparent;color:var(--danger);border:0;cursor:pointer;font-size:15px;padding:4px}
 .close{
   position:absolute;top:10px;right:10px;width:38px;height:38px;border-radius:50%;border:0;cursor:pointer;
   background:rgba(0,0,0,.55);color:#fff;font-size:22px;line-height:1;
@@ -379,6 +389,23 @@ function coverOf(a) {
   if (!coverURL.has(a.id)) { try { coverURL.set(a.id, URL.createObjectURL(a.cover)); } catch { return null; } }
   return coverURL.get(a.id);
 }
+const PIX_N = 12;
+const pixURLCache = new Map();
+function pixelArtDataURL(art) {
+  if (!art || !art.cells || !art.cells.some(Boolean)) return null;
+  const key = art.cells.join(',');
+  if (pixURLCache.has(key)) return pixURLCache.get(key);
+  const n = art.size || PIX_N, cell = 8;
+  let rects = '';
+  for (let i = 0; i < art.cells.length; i++) {
+    const c = art.cells[i]; if (!c) continue;
+    rects += `<rect x="${(i % n) * cell}" y="${Math.floor(i / n) * cell}" width="${cell}" height="${cell}" fill="${c}"/>`;
+  }
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${n * cell} ${n * cell}" shape-rendering="crispEdges">${rects}</svg>`;
+  const url = 'data:image/svg+xml,' + encodeURIComponent(svg);
+  pixURLCache.set(key, url);
+  return url;
+}
 function textOn(hex) {
   const h = (hex || '#888888').replace('#', '');
   const [r, g, b] = [0, 2, 4].map(i => parseInt(h.slice(i, i + 2), 16) / 255).map(v => v <= .03928 ? v / 12.92 : Math.pow((v + .055) / 1.055, 2.4));
@@ -542,7 +569,10 @@ function spineHTML(a) {
   const inDeck = cur && cur.album.id === a.id;
   const yr = a.year ? '’' + a.year.slice(-2) : '';
   const sel = editing && selected.has(a.id);
-  return `<button class="spine${inDeck ? ' in-deck' : ''}${sel ? ' sel' : ''}" data-id="${a.id}" style="--c:${a.color};--t:${textOn(a.color)};${fontVars(a)}"${editing ? ` aria-pressed="${sel}"` : ''} aria-label="${esc(a.artist)}, ${esc(a.title)}${inDeck ? ', in the deck' : ''}"><span class="yr">${esc(yr)}</span><span class="lbl">${inDeck && !editing ? 'In the deck' : `${esc(a.artist)}<span class="al">${esc(a.title)}</span>`}</span></button>`;
+  const artURL = pixelArtDataURL(a.pixelArt);
+  const cols = artURL ? '30px 42px 1fr' : '42px 1fr';
+  const badge = artURL ? `<span class="art" style="background-image:url('${artURL}')"></span>` : '';
+  return `<button class="spine${inDeck ? ' in-deck' : ''}${sel ? ' sel' : ''}" data-id="${a.id}" style="--c:${a.color};--t:${textOn(a.color)};grid-template-columns:${cols};${fontVars(a)}"${editing ? ` aria-pressed="${sel}"` : ''} aria-label="${esc(a.artist)}, ${esc(a.title)}${inDeck ? ', in the deck' : ''}">${badge}<span class="yr">${esc(yr)}</span><span class="lbl">${inDeck && !editing ? 'In the deck' : `${esc(a.artist)}<span class="al">${esc(a.title)}</span>`}</span></button>`;
 }
 function sortTrackIds(ids) {
   ids.sort((x, y) => {
@@ -659,9 +689,11 @@ function sidesOf(a) {
 function openCard(id) {
   const a = albums.find(x => x.id === id); if (!a) return;
   const { ts, split } = sidesOf(a);
-  const url = coverOf(a), t = textOn(a.color);
+  const url = coverOf(a), t = textOn(a.color), pixURL = pixelArtDataURL(a.pixelArt);
   const cover = url
     ? `<div class="cover" style="--c:${a.color};background-image:url('${url}')"></div>`
+    : pixURL
+    ? `<div class="cover pixel" style="--c:${a.color};background-image:url('${pixURL}')"></div>`
     : `<div class="cover gen" style="--c:${a.color};--t:${t}"><b>${esc(a.title)}</b><span>${esc(a.artist)}</span></div>`;
   const side = (label, list, off) => {
     if (!list.length) return '';
@@ -705,8 +737,14 @@ function openCard(id) {
 }
 
 /* ---------- label editor ---------- */
+let paintingPix = false;
+document.addEventListener('pointerup', () => paintingPix = false);
 function openEditor(a) {
-  const draft = { title: a.title, artist: a.artist, year: a.year || '', color: a.color, font: a.font || 'type', realTape: !!a.realTape };
+  const draft = {
+    title: a.title, artist: a.artist, year: a.year || '', color: a.color, font: a.font || 'type', realTape: !!a.realTape,
+    pixelArt: { size: PIX_N, cells: (a.pixelArt && a.pixelArt.cells) ? a.pixelArt.cells.slice() : new Array(PIX_N * PIX_N).fill(null) },
+    pixColor: PALETTE[0], pixErase: false
+  };
   const colors = [...new Set([a.color, ...PALETTE])];
   const dlg = $('#jcard');
   dlg.innerHTML = `<div class="jc-body ed">
@@ -724,6 +762,17 @@ function openEditor(a) {
       <fieldset><legend>Lettering</legend><div class="fonts">
         ${Object.entries(FONTS).map(([k, F]) => `<button type="button" class="fontopt" data-font="${k}" style="--f:${F.f};--fs:${F.fs};--fw:${F.fw}">${F.label}</button>`).join('')}
       </div></fieldset>
+      <fieldset><legend>Pixel art (cover + wall badge, used when there's no embedded artwork)</legend>
+        <div class="pixgrid" id="pixGrid" style="grid-template-columns:repeat(${PIX_N},1fr)">
+          ${Array.from({ length: PIX_N * PIX_N }, (_, i) => `<div class="pixcell" data-i="${i}"></div>`).join('')}
+        </div>
+        <div class="pixtools">
+          ${PALETTE.map(c => `<button type="button" class="pxsw" data-pcolor="${c}" style="--c:${c}" aria-label="Pixel color ${c}"></button>`).join('')}
+          <label class="custom">Custom<input type="color" id="pixColor" value="${PALETTE[0]}"></label>
+          <button type="button" class="eraser" id="pixEraser" aria-label="Eraser"></button>
+          <button type="button" class="clear" id="pixClear">Clear art</button>
+        </div>
+      </fieldset>
       <label class="check"><input type="checkbox" id="edReal"${draft.realTape ? ' checked' : ''}>Recorded from a real cassette
         <small>Plays without the added tape effect, since it already has the real thing.</small></label>
       <div class="jc-actions">
@@ -736,24 +785,60 @@ function openEditor(a) {
     prev.style.cssText = `--c:${draft.color};--t:${textOn(draft.color)};--f:${F.f};--fs:${F.fs};--fw:${F.fw}`;
     prev.querySelector('.yr').textContent = /\d{4}/.test(draft.year) ? '’' + draft.year.slice(-2) : '';
     prev.querySelector('.lbl').innerHTML = `${esc(draft.artist || 'Unknown artist')}<span class="al">${esc(draft.title || 'Untitled')}</span>`;
-    dlg.querySelectorAll('.sw').forEach(b => b.classList.toggle('on', b.dataset.color.toLowerCase() === draft.color.toLowerCase()));
+    dlg.querySelectorAll('.swatches .sw').forEach(b => b.classList.toggle('on', b.dataset.color.toLowerCase() === draft.color.toLowerCase()));
     dlg.querySelectorAll('.fontopt').forEach(b => { b.classList.toggle('on', b.dataset.font === draft.font); b.setAttribute('aria-pressed', b.dataset.font === draft.font); });
+  };
+  const renderGrid = () => {
+    dlg.querySelectorAll('.pixcell').forEach(cell => {
+      const c = draft.pixelArt.cells[+cell.dataset.i];
+      cell.style.cssText = c ? `background-image:none;background-color:${c}` : '';
+    });
+  };
+  const paintTools = () => {
+    dlg.querySelectorAll('.pxsw').forEach(b => b.classList.toggle('on', !draft.pixErase && b.dataset.pcolor.toLowerCase() === draft.pixColor.toLowerCase()));
+    $('#pixEraser').classList.toggle('on', draft.pixErase);
+  };
+  const paintCell = cell => {
+    draft.pixelArt.cells[+cell.dataset.i] = draft.pixErase ? null : draft.pixColor;
+    cell.style.cssText = draft.pixErase ? '' : `background-image:none;background-color:${draft.pixColor}`;
   };
   $('#edTitle').oninput = e => { draft.title = e.target.value; paint(); };
   $('#edArtist').oninput = e => { draft.artist = e.target.value; paint(); };
   $('#edYear').oninput = e => { draft.year = e.target.value.replace(/\D/g, '').slice(0, 4); e.target.value = draft.year; paint(); };
   $('#edColor').oninput = e => { draft.color = e.target.value; paint(); };
   $('#edReal').onchange = e => { draft.realTape = e.target.checked; };
+  $('#pixColor').oninput = e => { draft.pixColor = e.target.value; draft.pixErase = false; paintTools(); };
+  const grid = $('#pixGrid');
+  grid.addEventListener('pointerdown', e => {
+    const cell = e.target.closest('.pixcell'); if (!cell) return;
+    paintingPix = true; paintCell(cell); e.preventDefault();
+  });
+  grid.addEventListener('pointermove', e => {
+    if (!paintingPix) return;
+    const el = document.elementFromPoint(e.clientX, e.clientY);
+    const cell = el && el.closest && el.closest('.pixcell');
+    if (cell) paintCell(cell);
+  });
   dlg.onclick = async e => {
     if (e.target === dlg) { dlg.close(); return; }
-    const sw = e.target.closest('.sw'); if (sw) { draft.color = sw.dataset.color; $('#edColor').value = draft.color; paint(); return; }
+    const sw = e.target.closest('.swatches .sw'); if (sw) { draft.color = sw.dataset.color; $('#edColor').value = draft.color; paint(); return; }
     const fo = e.target.closest('.fontopt'); if (fo) { draft.font = fo.dataset.font; paint(); return; }
+    const pxsw = e.target.closest('.pxsw'); if (pxsw) { draft.pixColor = pxsw.dataset.pcolor; draft.pixErase = false; $('#pixColor').value = draft.pixColor; paintTools(); return; }
+    if (e.target.closest('#pixEraser')) { draft.pixErase = true; paintTools(); return; }
+    const pxClear = e.target.closest('#pixClear');
+    if (pxClear) {
+      if (!pxClear.dataset.armed) { pxClear.dataset.armed = '1'; pxClear.textContent = 'Tap again to clear'; return; }
+      draft.pixelArt.cells.fill(null); renderGrid();
+      delete pxClear.dataset.armed; pxClear.textContent = 'Clear art';
+      return;
+    }
     if (e.target.closest('#edCancel')) { openCard(a.id); return; }
     if (e.target.closest('#edSave')) {
       a.title = draft.title.trim() || a.title;
       a.artist = draft.artist.trim() || a.artist;
       a.year = /^\d{4}$/.test(draft.year) ? draft.year : '';
       a.color = draft.color; a.font = draft.font; a.realTape = draft.realTape;
+      a.pixelArt = draft.pixelArt.cells.some(Boolean) ? { size: PIX_N, cells: draft.pixelArt.cells } : null;
       a.key = norm(a.artist) + '|' + norm(a.title);
       await store.put('albums', a);
       renderWall();
@@ -763,6 +848,8 @@ function openEditor(a) {
     }
   };
   paint();
+  renderGrid();
+  paintTools();
   dlg.scrollTop = 0;
   $('#edTitle').focus({ preventScroll: true });
 }
