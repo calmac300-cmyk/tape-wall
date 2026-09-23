@@ -114,7 +114,7 @@ button,select{font:inherit}
 .spine .al{opacity:.72;margin-left:.7em}
 .spine.in-deck{background:rgba(0,0,0,.5);color:rgba(255,255,255,.4);box-shadow:inset 0 3px 7px rgba(0,0,0,.7)}
 .spine.in-deck .yr{background:transparent}
-.spine .art{align-self:center;justify-self:center;width:26px;height:26px;border-radius:2px;background-size:cover;image-rendering:pixelated;box-shadow:0 0 0 1px rgba(0,0,0,.35)}
+.spine .art{align-self:center;justify-self:center;width:19px;height:32px;border-radius:2px;background-size:cover;image-rendering:pixelated;box-shadow:0 0 0 1px rgba(0,0,0,.35)}
 
 .empty{max-width:560px;margin:10px auto 0;padding:0 18px calc(var(--deck-h,210px) + 36px)}
 .empty .tower{max-width:320px;margin-bottom:26px}
@@ -164,7 +164,7 @@ dialog.jcard::backdrop{background:rgba(12,7,3,.62)}
 }
 .cover.gen b{font-family:var(--type);font-weight:400;font-size:32px;line-height:1.1}
 .cover.gen span{font-size:20px;margin-top:6px}
-.cover.pixel{background-size:72%;image-rendering:pixelated}
+.cover.pixel{background-size:cover;image-rendering:pixelated}
 .pixgrid{display:grid;gap:1px;background:rgba(0,0,0,.25);border:1px solid rgba(0,0,0,.25);width:min(280px,100%);aspect-ratio:1;margin-top:8px;touch-action:none;cursor:crosshair}
 .pixcell{background:repeating-conic-gradient(#d8d2c2 0% 25%,#c9c2ae 0% 50%) 50%/10px 10px}
 .pixtools{display:flex;flex-wrap:wrap;align-items:center;gap:9px;margin-top:9px}
@@ -392,19 +392,20 @@ function coverOf(a) {
   if (!coverURL.has(a.id)) { try { coverURL.set(a.id, URL.createObjectURL(a.cover)); } catch { return null; } }
   return coverURL.get(a.id);
 }
-const PIX_N = 12;
+const PIX_W = 12, PIX_H = Math.round(PIX_W * 1.65);
 const pixURLCache = new Map();
 function pixelArtDataURL(art) {
   if (!art || !art.cells || !art.cells.some(Boolean)) return null;
-  const key = art.cells.join(',');
+  const w = art.w || art.size || PIX_W, h = art.h || art.size || PIX_H;
+  const key = w + 'x' + h + '|' + art.cells.join(',');
   if (pixURLCache.has(key)) return pixURLCache.get(key);
-  const n = art.size || PIX_N, cell = 8;
+  const cell = 8;
   let rects = '';
   for (let i = 0; i < art.cells.length; i++) {
     const c = art.cells[i]; if (!c) continue;
-    rects += `<rect x="${(i % n) * cell}" y="${Math.floor(i / n) * cell}" width="${cell}" height="${cell}" fill="${c}"/>`;
+    rects += `<rect x="${(i % w) * cell}" y="${Math.floor(i / w) * cell}" width="${cell}" height="${cell}" fill="${c}"/>`;
   }
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${n * cell} ${n * cell}" shape-rendering="crispEdges">${rects}</svg>`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w * cell} ${h * cell}" shape-rendering="crispEdges">${rects}</svg>`;
   const url = 'data:image/svg+xml,' + encodeURIComponent(svg);
   pixURLCache.set(key, url);
   return url;
@@ -574,7 +575,7 @@ function spineHTML(a) {
   const yr = a.year ? '’' + a.year.slice(-2) : '';
   const sel = editing && selected.has(a.id);
   const artURL = pixelArtDataURL(a.pixelArt);
-  const cols = artURL ? '30px 42px 1fr' : '42px 1fr';
+  const cols = artURL ? '25px 42px 1fr' : '42px 1fr';
   const badge = artURL ? `<span class="art" style="background-image:url('${artURL}')"></span>` : '';
   return `<button class="spine${inDeck ? ' in-deck' : ''}${sel ? ' sel' : ''}" data-id="${a.id}" style="--c:${a.color};--t:${textColorOf(a)};grid-template-columns:${cols};${fontVars(a)}"${editing ? ` aria-pressed="${sel}"` : ''} aria-label="${esc(a.artist)}, ${esc(a.title)}${inDeck ? ', in the deck' : ''}">${badge}<span class="yr">${esc(yr)}</span><span class="lbl">${inDeck && !editing ? 'In the deck' : `${esc(a.artist)}<span class="al">${esc(a.title)}</span>`}</span></button>`;
 }
@@ -697,7 +698,7 @@ function openCard(id) {
   const cover = url
     ? `<div class="cover" style="--c:${a.color};background-image:url('${url}')"></div>`
     : pixURL
-    ? `<div class="cover pixel" style="--c:${a.color};background-image:url('${pixURL}')"></div>`
+    ? `<div class="cover pixel" style="--c:${a.color};aspect-ratio:${PIX_W}/${PIX_H};background-image:url('${pixURL}')"></div>`
     : `<div class="cover gen" style="--c:${a.color};--t:${t}"><b>${esc(a.title)}</b><span>${esc(a.artist)}</span></div>`;
   const side = (label, list, off) => {
     if (!list.length) return '';
@@ -747,7 +748,10 @@ function openEditor(a) {
   const draft = {
     title: a.title, artist: a.artist, year: a.year || '', color: a.color, font: a.font || 'type', realTape: !!a.realTape,
     textColor: a.textColor || null,
-    pixelArt: { size: PIX_N, cells: (a.pixelArt && a.pixelArt.cells) ? a.pixelArt.cells.slice() : new Array(PIX_N * PIX_N).fill(null) },
+    pixelArt: {
+      w: PIX_W, h: PIX_H,
+      cells: (a.pixelArt && a.pixelArt.cells && a.pixelArt.cells.length === PIX_W * PIX_H) ? a.pixelArt.cells.slice() : new Array(PIX_W * PIX_H).fill(null)
+    },
     pixColor: PALETTE[0], pixErase: false
   };
   const colors = [...new Set([a.color, ...PALETTE])];
@@ -774,8 +778,8 @@ function openEditor(a) {
         ${Object.entries(FONTS).map(([k, F]) => `<button type="button" class="fontopt" data-font="${k}" style="--f:${F.f};--fs:${F.fs};--fw:${F.fw}">${F.label}</button>`).join('')}
       </div></fieldset>
       <fieldset><legend>Pixel art (cover + wall badge, used when there's no embedded artwork)</legend>
-        <div class="pixgrid" id="pixGrid" style="grid-template-columns:repeat(${PIX_N},1fr)">
-          ${Array.from({ length: PIX_N * PIX_N }, (_, i) => `<div class="pixcell" data-i="${i}"></div>`).join('')}
+        <div class="pixgrid" id="pixGrid" style="grid-template-columns:repeat(${PIX_W},1fr);aspect-ratio:${PIX_W}/${PIX_H}">
+          ${Array.from({ length: PIX_W * PIX_H }, (_, i) => `<div class="pixcell" data-i="${i}"></div>`).join('')}
         </div>
         <div class="pixtools">
           ${PALETTE.map(c => `<button type="button" class="pxsw" data-pcolor="${c}" style="--c:${c}" aria-label="Pixel color ${c}"></button>`).join('')}
@@ -853,7 +857,7 @@ function openEditor(a) {
       a.artist = draft.artist.trim() || a.artist;
       a.year = /^\d{4}$/.test(draft.year) ? draft.year : '';
       a.color = draft.color; a.font = draft.font; a.realTape = draft.realTape; a.textColor = draft.textColor;
-      a.pixelArt = draft.pixelArt.cells.some(Boolean) ? { size: PIX_N, cells: draft.pixelArt.cells } : null;
+      a.pixelArt = draft.pixelArt.cells.some(Boolean) ? { w: PIX_W, h: PIX_H, cells: draft.pixelArt.cells } : null;
       a.key = norm(a.artist) + '|' + norm(a.title);
       await store.put('albums', a);
       renderWall();
