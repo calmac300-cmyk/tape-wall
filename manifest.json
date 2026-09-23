@@ -1,0 +1,15 @@
+{
+  "name": "Tape wall",
+  "short_name": "Tape wall",
+  "description": "A wall of cassette tapes for your music library.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#c08f5c",
+  "theme_color": "#c08f5c",
+  "icons": [
+    { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}

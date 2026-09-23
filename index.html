@@ -1,0 +1,1028 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tape wall</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/icon.svg">
+<meta name="theme-color" content="#c08f5c" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#2c1e15" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Special+Elite&family=Permanent+Marker&family=Caveat:wght@500;600&family=Barlow+Condensed:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsmediatags/3.9.5/jsmediatags.min.js"></script>
+<style>
+:root{
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+  --wall:#c08f5c; --grain:#b3814f; --rack:#4a2f1c; --rack-edge:#6b4629;
+  --ink:#23180f; --muted:#5b4430;
+  --deck:#d6d3cc; --deck-2:#b7b3ab; --deck-ink:#1f1d1a; --deck-muted:#57534c; --bezel:#2a2826;
+  --paper:#f1ede3; --paper-ink:#2a2118; --paper-muted:#6f6354;
+  --accent:#b8321f; --danger:#9b2a1a; --shell:#2b2b2e; --focus:#1f5fbf;
+  --type:"Special Elite","Courier New",Courier,monospace;
+  --ui:"Barlow Condensed","Arial Narrow","Helvetica Neue",Arial,sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --wall:#2c1e15; --grain:#26190f; --rack:#130c07; --rack-edge:#33231a;
+    --ink:#efe4d4; --muted:#b39d85;
+    --deck:#3b3936; --deck-2:#2a2826; --deck-ink:#ece6da; --deck-muted:#a9a296; --bezel:#0f0e0d;
+    --paper:#e9e3d6; --paper-ink:#2a2118; --paper-muted:#6a5e50;
+    --accent:#e0553d; --danger:#9b2a1a; --shell:#1c1c1f; --focus:#8ab8ff;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --wall:#2c1e15; --grain:#26190f; --rack:#130c07; --rack-edge:#33231a;
+  --ink:#efe4d4; --muted:#b39d85;
+  --deck:#3b3936; --deck-2:#2a2826; --deck-ink:#ece6da; --deck-muted:#a9a296; --bezel:#0f0e0d;
+  --paper:#e9e3d6; --paper-ink:#2a2118; --paper-muted:#6a5e50;
+  --accent:#e0553d; --danger:#9b2a1a; --shell:#1c1c1f; --focus:#8ab8ff;
+  color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{height:100%;scroll-padding-top:env(safe-area-inset-top,0px)}
+body{
+  margin:0;min-height:100%;
+  background-color:var(--wall);
+  background-image:
+    repeating-linear-gradient(90deg,transparent 0 126px,rgba(0,0,0,.22) 126px 128px),
+    repeating-linear-gradient(90deg,var(--wall) 0 9px,var(--grain) 11px 13px,var(--wall) 17px 29px);
+  color:var(--ink);font-family:var(--ui);font-size:18px;line-height:1.3;
+  -webkit-tap-highlight-color:transparent;
+}
+button,select{font:inherit}
+:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+
+.bar{
+  position:sticky;top:env(safe-area-inset-top,0px);z-index:5;
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  padding:14px 18px 12px;max-width:1400px;margin:0 auto;background-color:var(--wall);
+}
+.btn.ghost{background:transparent;color:var(--ink);box-shadow:inset 0 0 0 1.5px currentColor}
+.btn[hidden]{display:none}
+.editbar{flex-basis:100%;display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 12px;border-radius:6px;background:var(--ink);color:var(--wall)}
+.editbar[hidden]{display:none}
+.editbar .count{flex:1;min-width:12ch;font-weight:600}
+.editbar button{border:0;border-radius:5px;padding:7px 12px;font-weight:600;font-size:16px;cursor:pointer;background:var(--wall);color:var(--ink)}
+.editbar button[disabled]{opacity:.45;cursor:default}
+.editbar .danger{background:#c23a24;color:#fff}
+.editing .spine:hover{transform:none}
+.editing .spine .yr{font-size:0}
+.editing .spine .yr::before{content:"";display:grid;place-items:center;width:18px;height:18px;border:2px solid currentColor;border-radius:3px;font:600 14px/1 var(--ui)}
+.editing .spine.sel .yr::before{content:"✓"}
+.editing .spine.sel{outline:3px solid var(--focus);outline-offset:1px}
+.trk .ta{display:block;font-size:15px;color:var(--paper-muted)}
+.bar h1{font-family:var(--type);font-weight:400;font-size:28px;margin:0;flex:1;min-width:8ch}
+.sortwrap{display:flex;align-items:center;gap:6px;color:var(--muted);font-size:16px}
+.sortwrap select{
+  color:var(--ink);background:transparent;border:1.5px solid currentColor;border-radius:5px;
+  padding:5px 6px;font-weight:600;font-size:16px;
+}
+.btn{
+  border:0;border-radius:6px;padding:9px 15px;font-weight:600;font-size:17px;cursor:pointer;
+  background:var(--ink);color:var(--wall);
+}
+
+#wall{
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:30px 22px;
+  padding:6px 18px calc(var(--deck-h,210px) + 36px);max-width:1400px;margin:0 auto;
+}
+.tower{
+  align-self:start;display:flex;flex-direction:column;gap:4px;padding:10px 12px 0;border-radius:3px;
+  background:linear-gradient(90deg,var(--rack-edge),var(--rack) 11px,var(--rack) calc(100% - 11px),var(--rack-edge));
+  box-shadow:0 12px 20px rgba(0,0,0,.35);
+}
+.tower::after{content:"";display:block;height:14px;margin:6px -12px 0;background:var(--rack-edge);border-radius:0 0 3px 3px}
+.spine{
+  display:grid;grid-template-columns:42px 1fr;align-items:stretch;height:36px;width:100%;padding:0;border:0;
+  background:var(--c);color:var(--t);border-radius:2px;cursor:pointer;text-align:left;overflow:hidden;
+  font-family:var(--f,var(--type));font-size:var(--fs,14.5px);font-weight:var(--fw,400);
+  box-shadow:inset 0 0 0 2px rgba(255,255,255,.22),inset 0 -3px 0 rgba(0,0,0,.2),0 1px 0 rgba(0,0,0,.6);
+  transition:transform .18s ease;
+}
+.spine:hover{transform:translateX(5px)}
+.spine .yr{display:grid;place-items:center;background:rgba(0,0,0,.2);font-size:13px}
+.spine .lbl{align-self:center;padding:0 10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.spine .al{opacity:.72;margin-left:.7em}
+.spine.in-deck{background:rgba(0,0,0,.5);color:rgba(255,255,255,.4);box-shadow:inset 0 3px 7px rgba(0,0,0,.7)}
+.spine.in-deck .yr{background:transparent}
+
+.empty{max-width:560px;margin:10px auto 0;padding:0 18px calc(var(--deck-h,210px) + 36px)}
+.empty .tower{max-width:320px;margin-bottom:26px}
+.ghost-slot{height:36px;border-radius:2px;background:rgba(0,0,0,.4);box-shadow:inset 0 3px 7px rgba(0,0,0,.6)}
+.empty h2{font-family:var(--type);font-weight:400;font-size:24px;margin:0 0 8px}
+.empty p{font-size:19px;max-width:46ch;margin:0 0 14px}
+.empty .fine{font-size:16px;color:var(--muted)}
+
+.deck{
+  position:fixed;left:0;right:0;bottom:0;z-index:10;
+  padding:12px 16px calc(12px + env(safe-area-inset-bottom,0px));
+  background:linear-gradient(180deg,var(--deck),var(--deck-2));color:var(--deck-ink);
+  border-top:1px solid rgba(255,255,255,.35);box-shadow:0 -8px 20px rgba(0,0,0,.35);
+}
+.deck-inner{max-width:900px;margin:0 auto;display:grid;grid-template-columns:auto 1fr;gap:10px 16px;align-items:center}
+.door{background:var(--bezel);border-radius:8px;padding:6px;width:min(40vw,196px);box-shadow:inset 0 2px 6px rgba(0,0,0,.8)}
+.door svg{display:block;width:100%;height:auto}
+.info{min-width:0}
+.now-title{font-weight:600;font-size:21px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.now-sub{color:var(--deck-muted);font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.counter{display:flex;align-items:center;gap:10px;margin-top:6px;font-variant-numeric:tabular-nums;font-size:16px}
+.side-badge{font-family:var(--type);background:var(--deck-ink);color:var(--deck);border-radius:3px;padding:1px 7px;font-size:14px}
+.counter input{flex:1;min-width:60px;accent-color:var(--accent)}
+.controls{grid-column:1/-1;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.key{
+  display:grid;place-items:center;width:52px;height:44px;padding:0;border:0;border-radius:5px;cursor:pointer;
+  color:var(--deck-ink);background:linear-gradient(var(--deck),var(--deck-2));
+  box-shadow:0 3px 0 rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.5);
+}
+.key:active:not([disabled]){transform:translateY(2px);box-shadow:0 1px 0 rgba(0,0,0,.4),inset 0 1px 3px rgba(0,0,0,.3)}
+.key svg{width:22px;height:22px;fill:currentColor}
+.key.play{width:66px}
+.key[disabled]{opacity:.4;cursor:default}
+.mode{margin-left:auto;display:flex;align-items:center;gap:8px;font-size:16px;color:var(--deck-muted)}
+.mode[hidden]{display:none}
+.mode select{color:var(--deck-ink);background:transparent;border:1.5px solid currentColor;border-radius:5px;padding:5px 6px;font-weight:600;font-size:16px}
+
+dialog.jcard{
+  border:0;padding:0;width:min(420px,calc(100vw - 24px));max-height:calc(100% - 40px);
+  background:var(--paper);color:var(--paper-ink);border-radius:4px;box-shadow:0 24px 60px rgba(0,0,0,.55);
+}
+dialog.jcard::backdrop{background:rgba(12,7,3,.62)}
+.cover{aspect-ratio:1;background:var(--c) center/cover no-repeat;position:relative}
+.cover.gen{
+  display:flex;flex-direction:column;justify-content:flex-end;padding:22px;color:var(--t);
+  background-image:repeating-linear-gradient(0deg,transparent 0 22px,rgba(0,0,0,.12) 22px 26px);
+}
+.cover.gen b{font-family:var(--type);font-weight:400;font-size:32px;line-height:1.1}
+.cover.gen span{font-size:20px;margin-top:6px}
+.close{
+  position:absolute;top:10px;right:10px;width:38px;height:38px;border-radius:50%;border:0;cursor:pointer;
+  background:rgba(0,0,0,.55);color:#fff;font-size:22px;line-height:1;
+}
+.jc-body{padding:16px 18px 22px}
+.jc-title{font-family:var(--type);font-weight:400;font-size:24px;margin:0}
+.jc-artist{font-size:19px;margin:2px 0 0;color:var(--paper-muted)}
+.side h3{
+  display:flex;justify-content:space-between;font-family:var(--type);font-weight:400;font-size:16px;
+  margin:18px 0 4px;padding-bottom:3px;border-bottom:1px solid rgba(0,0,0,.25);
+}
+.side h3 span{color:var(--paper-muted);font-variant-numeric:tabular-nums}
+.trk{
+  display:grid;grid-template-columns:28px 1fr auto;gap:8px;width:100%;padding:7px 4px;border:0;border-radius:3px;
+  background:transparent;color:inherit;text-align:left;cursor:pointer;font-size:17px;
+}
+.trk:hover{background:rgba(0,0,0,.07)}
+.trk .n,.trk .d{color:var(--paper-muted);font-variant-numeric:tabular-nums}
+.jc-actions{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:20px}
+.jc-actions .btn{background:var(--paper-ink);color:var(--paper)}
+.jc-actions .remove{margin-left:auto;background:transparent;color:var(--danger);padding-inline:4px}
+.jc-actions .plain{background:transparent;color:var(--paper-ink);box-shadow:inset 0 0 0 1.5px currentColor}
+.real-note{margin:6px 0 0;font-size:16px;color:var(--paper-muted)}
+.preview{margin-top:12px;padding:10px 12px;background:var(--rack);border-radius:3px}
+.preview .spine{cursor:default}
+.preview .spine:hover{transform:none}
+.fld{display:block;margin-top:12px;font-size:15px;color:var(--paper-muted)}
+.fld input{display:block;width:100%;margin-top:3px;font:inherit;font-size:18px;color:var(--paper-ink);background:#fffdf8;border:1.5px solid rgba(0,0,0,.25);border-radius:5px;padding:7px 9px}
+.row2{display:grid;grid-template-columns:1fr 90px;gap:10px}
+.ed fieldset{border:0;padding:0;margin:16px 0 0}
+.ed legend{font-size:15px;color:var(--paper-muted);padding:0;margin-bottom:7px}
+.swatches{display:flex;flex-wrap:wrap;gap:9px;align-items:center}
+.sw{width:34px;height:34px;border-radius:50%;border:2px solid rgba(0,0,0,.2);padding:0;cursor:pointer;background:var(--c)}
+.sw.on{outline:3px solid var(--paper-ink);outline-offset:2px}
+.custom{display:flex;align-items:center;gap:6px;font-size:15px;color:var(--paper-muted)}
+.custom input{width:38px;height:34px;padding:0;border:0;background:transparent;cursor:pointer}
+.fonts{display:flex;flex-wrap:wrap;gap:8px}
+.fontopt{border:1.5px solid rgba(0,0,0,.25);border-radius:5px;padding:6px 12px;background:transparent;color:var(--paper-ink);cursor:pointer;font-family:var(--f);font-size:var(--fs);font-weight:var(--fw)}
+.fontopt.on{background:var(--paper-ink);color:var(--paper);border-color:var(--paper-ink)}
+.check{display:grid;grid-template-columns:auto 1fr;gap:3px 10px;margin-top:18px;font-size:17px;cursor:pointer}
+.check input{width:20px;height:20px;margin:2px 0 0;accent-color:var(--paper-ink)}
+.check small{grid-column:2;font-size:15px;color:var(--paper-muted)}
+
+.toast{
+  position:fixed;left:50%;bottom:calc(var(--deck-h,210px) + 14px);transform:translateX(-50%);z-index:20;
+  max-width:calc(100vw - 32px);padding:10px 16px;border-radius:6px;font-size:17px;
+  background:var(--ink);color:var(--wall);box-shadow:0 6px 16px rgba(0,0,0,.35);
+  opacity:0;pointer-events:none;transition:opacity .2s;
+}
+.toast.show{opacity:1}
+.dropping #wall,.dropping .empty{outline:3px dashed var(--ink);outline-offset:-10px}
+
+@media (max-width:520px){
+  .bar h1{font-size:24px}
+  .mode{margin-left:0;width:100%}
+  .key{width:48px}
+}
+@media (prefers-reduced-motion:reduce){.spine{transition:none}.toast{transition:none}}
+</style>
+</head>
+<body>
+<header class="bar">
+  <h1>Tape wall</h1>
+  <label class="sortwrap">Sort
+    <select id="sort">
+      <option value="artist">Artist</option>
+      <option value="year">Year</option>
+      <option value="added">Recently added</option>
+    </select>
+  </label>
+  <button class="btn ghost" id="editBtn" hidden>Edit wall</button>
+  <button class="btn" id="addBtn">Add tapes</button>
+  <input type="file" id="fileIn" multiple accept="audio/*,.mp3,.m4a,.aac,.flac,.wav,.ogg,.opus,.aif,.aiff" hidden>
+  <div class="editbar" id="editbar" hidden>
+    <span class="count" id="selCount">Tap tapes to select them</span>
+    <button id="selAll">Select all</button>
+    <button id="combineBtn" disabled>Combine into one tape</button>
+    <button id="removeSel" class="danger" disabled>Remove</button>
+  </div>
+</header>
+
+<main id="wall" hidden></main>
+
+<section class="empty" id="empty" hidden>
+  <div class="tower" aria-hidden="true">
+    <div class="ghost-slot"></div><div class="ghost-slot"></div><div class="ghost-slot"></div>
+    <div class="ghost-slot"></div><div class="ghost-slot"></div>
+  </div>
+  <h2>The rack is empty</h2>
+  <p>Select the song files from one or more albums. Each album becomes a tape on the wall, labeled from the files' tags.</p>
+  <p><button class="btn" id="addBtn2">Add tapes</button></p>
+  <p class="fine">Files stay on this device. Nothing is uploaded.</p>
+</section>
+
+<section class="deck" id="deck" aria-label="Tape deck">
+  <div class="deck-inner">
+    <div class="door">
+      <svg viewBox="0 0 220 136" aria-hidden="true">
+        <defs><clipPath id="win"><rect x="44" y="36" width="132" height="42" rx="6"/></clipPath></defs>
+        <g id="cassette">
+          <rect x="2" y="2" width="216" height="132" rx="9" style="fill:var(--shell)"/>
+          <rect id="tapeLabel" x="14" y="10" width="192" height="80" rx="4" style="fill:#e6e0d2"/>
+          <text id="tapeText" x="110" y="27" text-anchor="middle" style="font-family:var(--type);font-size:12px;fill:#2a2118"></text>
+          <text id="tapeSide" x="24" y="27" style="font-family:var(--type);font-size:12px;fill:#2a2118">A</text>
+          <g clip-path="url(#win)">
+            <rect x="44" y="36" width="132" height="42" fill="#17120f"/>
+            <circle id="packL" cx="76" cy="57" r="30" fill="#4b2d19"/>
+            <circle id="packR" cx="144" cy="57" r="16" fill="#4b2d19"/>
+            <g id="hubL" transform="translate(76 57)"><circle r="11" fill="#e6e0d3"/><circle r="5.5" fill="#17120f"/><g fill="#e6e0d3"><rect x="-1.4" y="-5.6" width="2.8" height="2.4"/><rect x="-1.4" y="-5.6" width="2.8" height="2.4" transform="rotate(60)"/><rect x="-1.4" y="-5.6" width="2.8" height="2.4" transform="rotate(120)"/><rect x="-1.4" y="-5.6" width="2.8" height="2.4" transform="rotate(180)"/><rect x="-1.4" y="-5.6" width="2.8" height="2.4" transform="rotate(240)"/><rect x="-1.4" y="-5.6" width="2.8" height="2.4" transform="rotate(300)"/></g><circle cx="0" cy="-8.3" r="1.4" fill="#7a6e60"/></g>
+            <g id="hubR" transform="translate(144 57)"><circle r="11" fill="#e6e0d3"/><circle r="5.5" fill="#17120f"/><g fill="#e6e0d3"><rect x="-1.4" y="-5.6" width="2.8" height="2.4"/><rect x="-1.4" y="-5.6" width="2.8" height="2.4" transform="rotate(60)"/><rect x="-1.4" y="-5.6" width="2.8" height="2.4" transform="rotate(120)"/><rect x="-1.4" y="-5.6" width="2.8" height="2.4" transform="rotate(180)"/><rect x="-1.4" y="-5.6" width="2.8" height="2.4" transform="rotate(240)"/><rect x="-1.4" y="-5.6" width="2.8" height="2.4" transform="rotate(300)"/></g><circle cx="0" cy="-8.3" r="1.4" fill="#7a6e60"/></g>
+          </g>
+          <rect x="44" y="36" width="132" height="42" rx="6" fill="none" stroke="rgba(255,255,255,.3)"/>
+          <path d="M52 134 L64 100 H156 L168 134" fill="rgba(255,255,255,.07)"/>
+          <circle cx="84" cy="118" r="4" fill="#000"/><circle cx="136" cy="118" r="4" fill="#000"/>
+          <circle cx="10" cy="10" r="2" fill="rgba(255,255,255,.25)"/><circle cx="210" cy="10" r="2" fill="rgba(255,255,255,.25)"/>
+          <circle cx="10" cy="126" r="2" fill="rgba(255,255,255,.25)"/><circle cx="210" cy="126" r="2" fill="rgba(255,255,255,.25)"/>
+        </g>
+        <g id="noTape"><rect x="2" y="2" width="216" height="132" rx="9" fill="#1a1917"/></g>
+      </svg>
+    </div>
+    <div class="info">
+      <div class="now-title" id="nowTitle">No tape in the deck</div>
+      <div class="now-sub" id="nowSub">Pick one off the wall</div>
+      <div class="counter">
+        <span class="side-badge" id="sideBadge">A</span>
+        <span id="time">0:00</span>
+        <input type="range" id="seek" min="0" max="1000" value="0" aria-label="Position in track" disabled>
+        <span id="dur">0:00</span>
+      </div>
+    </div>
+    <div class="controls">
+      <button class="key" id="prevBtn" aria-label="Previous track" title="Previous track"><svg viewBox="0 0 24 24"><path d="M6 5h2.4v14H6zM20 5v14L9.5 12z"/></svg></button>
+      <button class="key play" id="playBtn" aria-label="Play" title="Play"><svg viewBox="0 0 24 24"><path id="playIcon" d="M7 5v14l12-7z"/></svg></button>
+      <button class="key" id="nextBtn" aria-label="Next track" title="Next track"><svg viewBox="0 0 24 24"><path d="M15.6 5H18v14h-2.4zM4 5v14l10.5-7z"/></svg></button>
+      <button class="key" id="flipBtn" aria-label="Flip to the other side" title="Flip side"><svg viewBox="0 0 24 24"><path d="M4 8h12.2l-2.6-2.6L15 4l5 5-5 5-1.4-1.4L16.2 10H4zM20 16H7.8l2.6 2.6L9 20l-5-5 5-5 1.4 1.4L7.8 14H20z"/></svg></button>
+      <button class="key" id="ejectBtn" aria-label="Eject" title="Eject"><svg viewBox="0 0 24 24"><path d="M12 5l7.5 9h-15zM4.5 16h15v3h-15z"/></svg></button>
+      <span class="mode" id="realNote" hidden>Real cassette, no added effect</span>
+      <label class="mode" id="modeWrap">Sound
+        <select id="mode">
+          <option value="clean">Clean (no tape effect)</option>
+          <option value="normal">Normal bias tape</option>
+          <option value="chrome">Chrome tape</option>
+          <option value="worn">Worn dub</option>
+        </select>
+      </label>
+    </div>
+  </div>
+</section>
+
+<dialog class="jcard" id="jcard" aria-label="Tape details"></dialog>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(() => {
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+const fmt = s => { if (!isFinite(s) || s < 0) s = 0; const m = Math.floor(s / 60), x = Math.floor(s % 60); return m + ':' + String(x).padStart(2, '0'); };
+const norm = s => (s || '').toLowerCase().replace(/\s+/g, ' ').trim();
+const LS = {
+  get(k, d) { try { return localStorage.getItem(k) ?? d; } catch { return d; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch {} }
+};
+const reduceMotion = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ---------- storage (IndexedDB, falls back to memory) ---------- */
+let db = null;
+const mem = { albums: new Map(), tracks: new Map(), blobs: new Map() };
+let persistFailed = false;
+function openDB() {
+  return new Promise((res, rej) => {
+    let r;
+    try { r = indexedDB.open('tape-wall', 1); } catch (e) { rej(e); return; }
+    r.onupgradeneeded = () => {
+      const d = r.result;
+      ['albums', 'tracks', 'blobs'].forEach(n => { if (!d.objectStoreNames.contains(n)) d.createObjectStore(n, { keyPath: 'id' }); });
+    };
+    r.onsuccess = () => res(r.result);
+    r.onerror = () => rej(r.error);
+  });
+}
+function req(name, mode, fn) {
+  return new Promise((res, rej) => {
+    const t = db.transaction(name, mode);
+    const r = fn(t.objectStore(name));
+    let out;
+    if (r) r.onsuccess = () => { out = r.result; };
+    t.oncomplete = () => res(out);
+    t.onerror = () => rej(t.error);
+    t.onabort = () => rej(t.error);
+  });
+}
+const store = {
+  async all(n) { if (db) { try { return await req(n, 'readonly', s => s.getAll()); } catch (e) { console.warn(e); } } return [...mem[n].values()]; },
+  async get(n, id) { if (mem[n].has(id)) return mem[n].get(id); if (db) { try { return await req(n, 'readonly', s => s.get(id)); } catch (e) { console.warn(e); } } return undefined; },
+  async put(n, o) {
+    if (db) { try { await req(n, 'readwrite', s => s.put(o)); return true; } catch (e) { console.warn(e); } }
+    mem[n].set(o.id, o); persistFailed = true; return false;
+  },
+  async del(n, id) { mem[n].delete(id); if (db) { try { await req(n, 'readwrite', s => s.delete(id)); } catch (e) { console.warn(e); } } }
+};
+
+/* ---------- state ---------- */
+let albums = [];
+const tracks = new Map();
+const coverURL = new Map();
+let cur = null; // {album, ts, split, idx}
+let mode = LS.get('tapeMode', 'normal');
+
+function coverOf(a) {
+  if (!a.cover) return null;
+  if (!coverURL.has(a.id)) { try { coverURL.set(a.id, URL.createObjectURL(a.cover)); } catch { return null; } }
+  return coverURL.get(a.id);
+}
+function textOn(hex) {
+  const h = (hex || '#888888').replace('#', '');
+  const [r, g, b] = [0, 2, 4].map(i => parseInt(h.slice(i, i + 2), 16) / 255).map(v => v <= .03928 ? v / 12.92 : Math.pow((v + .055) / 1.055, 2.4));
+  return (0.2126 * r + 0.7152 * g + 0.0722 * b) > 0.28 ? '#1b1410' : '#f6f1e7';
+}
+const FONTS = {
+  type:   { label: 'Typewriter', f: 'var(--type)', fs: '14.5px', fw: 400 },
+  marker: { label: 'Marker', f: '"Permanent Marker","Comic Sans MS",cursive', fs: '14px', fw: 400 },
+  pen:    { label: 'Ballpoint', f: '"Caveat","Segoe Print",cursive', fs: '19px', fw: 600 },
+  print:  { label: 'Printed', f: 'var(--ui)', fs: '16.5px', fw: 600 }
+};
+const fontOf = a => FONTS[a.font] || FONTS.type;
+const fontVars = a => { const F = fontOf(a); return `--f:${F.f};--fs:${F.fs};--fw:${F.fw}`; };
+const PALETTE = ['#c8412f', '#2f6e8c', '#d9a33b', '#3d7a4f', '#7a3f6e', '#e4dfd2', '#1f2a44', '#b5652a', '#8a9a3b', '#5c5f66'];
+function hashColor(key) { let h = 0; for (const c of key) h = (h * 31 + c.charCodeAt(0)) >>> 0; return PALETTE[h % PALETTE.length]; }
+const hex = (r, g, b) => '#' + [r, g, b].map(v => Math.round(Math.max(0, Math.min(255, v))).toString(16).padStart(2, '0')).join('');
+async function coverColor(blob) {
+  try {
+    const url = URL.createObjectURL(blob);
+    const img = new Image(); img.src = url; await img.decode();
+    const c = document.createElement('canvas'); c.width = c.height = 12;
+    const g = c.getContext('2d'); g.drawImage(img, 0, 0, 12, 12); URL.revokeObjectURL(url);
+    const d = g.getImageData(0, 0, 12, 12).data;
+    let r = 0, gg = 0, b = 0, n = 0;
+    for (let i = 0; i < d.length; i += 4) {
+      const w = (Math.max(d[i], d[i + 1], d[i + 2]) - Math.min(d[i], d[i + 1], d[i + 2])) + 20;
+      r += d[i] * w; gg += d[i + 1] * w; b += d[i + 2] * w; n += w;
+    }
+    return hex(r / n, gg / n, b / n);
+  } catch { return null; }
+}
+
+/* ---------- reading files ---------- */
+function readTags(file) {
+  return new Promise(res => {
+    if (!window.jsmediatags) { res({}); return; }
+    const timer = setTimeout(() => res({}), 10000);
+    try {
+      window.jsmediatags.read(file, {
+        onSuccess: t => {
+          clearTimeout(timer);
+          const g = t.tags || {};
+          const cp = (g.TCMP && g.TCMP.data) ?? (g.cpil && g.cpil.data);
+          res({
+            compilation: cp === '1' || cp === 1 || cp === true,
+            title: g.title, artist: g.artist, album: g.album, year: g.year, track: g.track,
+            disk: (g.TPOS && g.TPOS.data) || g.disk,
+            albumArtist: (g.TPE2 && g.TPE2.data) || (g.aART && g.aART.data),
+            picture: g.picture
+          });
+        },
+        onError: () => { clearTimeout(timer); res({}); }
+      });
+    } catch { clearTimeout(timer); res({}); }
+  });
+}
+function readDuration(file) {
+  return new Promise(res => {
+    const a = document.createElement('audio'); a.preload = 'metadata';
+    let url; try { url = URL.createObjectURL(file); } catch { res(0); return; }
+    let done = false;
+    const fin = d => { if (done) return; done = true; URL.revokeObjectURL(url); res(isFinite(d) && d > 0 ? d : 0); };
+    a.onloadedmetadata = () => fin(a.duration);
+    a.onerror = () => fin(0);
+    setTimeout(() => fin(0), 8000);
+    a.src = url;
+  });
+}
+function parseName(name) {
+  const base = name.replace(/\.[^.]+$/, '');
+  const m = base.match(/^(\d{1,3})[\s._-]+(.*)$/);
+  return m ? { no: +m[1], title: m[2].trim() || base } : { no: 0, title: base };
+}
+const yearOf = y => { const m = String(y || '').match(/\d{4}/); return m ? m[0] : ''; };
+const picType = f => !f ? 'image/jpeg' : (f.includes('/') ? f : 'image/' + f.toLowerCase().replace('jpg', 'jpeg'));
+
+async function importFiles(list) {
+  const files = [...list].filter(f => /^audio\//.test(f.type) || /\.(mp3|m4a|aac|flac|wav|ogg|opus|aif|aiff)$/i.test(f.name));
+  if (!files.length) { toast('No audio files found. Pick MP3, M4A, FLAC, or WAV files.'); return; }
+  try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch {}
+  const info = new Array(files.length);
+  let done = 0, nextI = 0;
+  toast(`Reading 0 of ${files.length} files`, true);
+  const worker = async () => {
+    while (nextI < files.length) {
+      const i = nextI++, f = files[i];
+      const [tags, duration] = await Promise.all([readTags(f), readDuration(f)]);
+      info[i] = { f, tags, duration };
+      toast(`Reading ${++done} of ${files.length} files`, true);
+    }
+  };
+  await Promise.all([worker(), worker(), worker()]);
+
+  // Compilations: one album title, several artists, no album-artist tag
+  const folderOf = f => (f.webkitRelativePath || '').split('/').slice(-2, -1)[0] || '';
+  const titleArtists = new Map();
+  for (const r of info) {
+    const t = r.tags; if (!t.album) continue;
+    const tk = norm(t.album) + '|' + folderOf(r.f);
+    if (!titleArtists.has(tk)) titleArtists.set(tk, new Set());
+    titleArtists.get(tk).add(norm(t.artist));
+  }
+  const groups = new Map();
+  for (const r of info) {
+    const t = r.tags;
+    const folder = folderOf(r.f);
+    const title = String(t.album || folder || 'Loose tracks').trim();
+    const manyArtists = t.album && (titleArtists.get(norm(t.album) + '|' + folder) || new Set()).size >= 3;
+    const artist = t.albumArtist ? String(t.albumArtist).trim()
+      : (t.compilation || manyArtists) ? 'Various artists'
+      : String(t.artist || 'Unknown artist').trim();
+    const key = norm(artist) + '|' + norm(title);
+    if (!groups.has(key)) groups.set(key, { artist, title, year: t.year, pic: null, items: [] });
+    const g = groups.get(key);
+    if (!g.year && t.year) g.year = t.year;
+    if (!g.pic && t.picture && t.picture.data) g.pic = t.picture;
+    g.items.push(r);
+  }
+
+  let added = 0, newTapes = 0;
+  for (const [key, g] of groups) {
+    let a = albums.find(x => x.key === key);
+    if (!a) {
+      let cover = null;
+      if (g.pic) { try { cover = new Blob([new Uint8Array(g.pic.data)], { type: picType(g.pic.format) }); } catch {} }
+      a = { id: uid(), key, artist: g.artist, title: g.title, year: yearOf(g.year), cover,
+            color: (cover && await coverColor(cover)) || hashColor(key), added: Date.now(), trackIds: [] };
+      albums.push(a); newTapes++;
+    }
+    for (const r of g.items) {
+      const fn = parseName(r.f.name);
+      const title = r.tags.title || fn.title;
+      const no = parseInt(r.tags.track) || fn.no || 0;
+      if (a.trackIds.some(id => { const x = tracks.get(id); return x && x.title === title && x.no === no; })) continue;
+      const t = { id: uid(), albumId: a.id, title, artist: String(r.tags.artist || '').trim(), no, disc: parseInt(r.tags.disk) || 1, duration: r.duration || 0, name: r.f.name };
+      await store.put('blobs', { id: t.id, blob: r.f });
+      await store.put('tracks', t);
+      tracks.set(t.id, t); a.trackIds.push(t.id); added++;
+    }
+    sortTrackIds(a.trackIds);
+    await store.put('albums', a);
+  }
+  renderWall();
+  if (persistFailed) toast('This browser won’t save files, so the tapes will disappear when you close the page.');
+  else if (newTapes) toast(`Added ${newTapes} ${newTapes === 1 ? 'tape' : 'tapes'} to the wall.`);
+  else if (added) toast(`Added ${added} ${added === 1 ? 'track' : 'tracks'} to tapes already on the wall.`);
+  else toast('Those tracks are already on the wall.');
+}
+
+/* ---------- wall ---------- */
+function sortedAlbums() {
+  const s = $('#sort').value, k = x => norm(x).replace(/^the\s+/, '');
+  const arr = [...albums];
+  if (s === 'artist') arr.sort((a, b) => k(a.artist).localeCompare(k(b.artist)) || (a.year || '').localeCompare(b.year || '') || k(a.title).localeCompare(k(b.title)));
+  else if (s === 'year') arr.sort((a, b) => (a.year || '9999').localeCompare(b.year || '9999') || k(a.artist).localeCompare(k(b.artist)));
+  else arr.sort((a, b) => b.added - a.added);
+  return arr;
+}
+function spineHTML(a) {
+  const inDeck = cur && cur.album.id === a.id;
+  const yr = a.year ? '’' + a.year.slice(-2) : '';
+  const sel = editing && selected.has(a.id);
+  return `<button class="spine${inDeck ? ' in-deck' : ''}${sel ? ' sel' : ''}" data-id="${a.id}" style="--c:${a.color};--t:${textOn(a.color)};${fontVars(a)}"${editing ? ` aria-pressed="${sel}"` : ''} aria-label="${esc(a.artist)}, ${esc(a.title)}${inDeck ? ', in the deck' : ''}"><span class="yr">${esc(yr)}</span><span class="lbl">${inDeck && !editing ? 'In the deck' : `${esc(a.artist)}<span class="al">${esc(a.title)}</span>`}</span></button>`;
+}
+function sortTrackIds(ids) {
+  ids.sort((x, y) => {
+    const A = tracks.get(x), B = tracks.get(y);
+    return (A.disc - B.disc) || (A.no - B.no) || A.name.localeCompare(B.name, undefined, { numeric: true });
+  });
+}
+
+/* ---------- edit mode ---------- */
+let editing = false;
+const selected = new Set();
+function setEditing(on) {
+  editing = on; selected.clear();
+  document.body.classList.toggle('editing', on);
+  $('#editbar').hidden = !on;
+  $('#editBtn').textContent = on ? 'Done' : 'Edit wall';
+  renderWall(); updateEditBar();
+}
+function updateEditBar() {
+  const n = selected.size;
+  $('#selCount').textContent = n ? `${n} selected` : 'Tap tapes to select them';
+  $('#selAll').textContent = n === albums.length && n ? 'Select none' : 'Select all';
+  $('#combineBtn').disabled = n < 2;
+  const r = $('#removeSel'); r.disabled = n < 1; r.textContent = 'Remove'; delete r.dataset.armed;
+}
+$('#editBtn').onclick = () => setEditing(!editing);
+$('#selAll').onclick = () => {
+  if (selected.size === albums.length) selected.clear(); else albums.forEach(a => selected.add(a.id));
+  renderWall(); updateEditBar();
+};
+$('#removeSel').onclick = async e => {
+  const b = e.currentTarget, n = selected.size; if (!n) return;
+  if (!b.dataset.armed) { b.dataset.armed = '1'; b.textContent = `Tap again to remove ${n} ${n === 1 ? 'tape' : 'tapes'}`; return; }
+  const list = albums.filter(a => selected.has(a.id));
+  for (const a of list) await removeAlbum(a, true);
+  setEditing(false);
+  toast(`Removed ${n} ${n === 1 ? 'tape' : 'tapes'}.`);
+};
+$('#combineBtn').onclick = async () => {
+  const list = albums.filter(a => selected.has(a.id)); if (list.length < 2) return;
+  if (cur && list.some(a => a.id === cur.album.id)) eject();
+  const counts = new Map(); list.forEach(a => counts.set(a.title, (counts.get(a.title) || 0) + a.trackIds.length));
+  const title = [...counts].sort((x, y) => y[1] - x[1])[0][0];
+  const artist = new Set(list.map(a => norm(a.artist))).size === 1 ? list[0].artist : 'Various artists';
+  const base = list.find(a => a.cover) || list[0];
+  const target = { ...base, title, artist, key: norm(artist) + '|' + norm(title), year: base.year || (list.find(a => a.year) || {}).year || '', trackIds: [] };
+  for (const a of list) {
+    for (const id of a.trackIds) {
+      const t = tracks.get(id); if (!t) continue;
+      if (!t.artist) t.artist = a.artist;
+      t.albumId = target.id; await store.put('tracks', t);
+      target.trackIds.push(id);
+    }
+  }
+  sortTrackIds(target.trackIds);
+  await store.put('albums', target);
+  for (const a of list) if (a.id !== target.id) {
+    await store.del('albums', a.id);
+    if (coverURL.has(a.id)) { URL.revokeObjectURL(coverURL.get(a.id)); coverURL.delete(a.id); }
+  }
+  albums = albums.filter(a => !selected.has(a.id) || a.id === target.id).map(a => a.id === target.id ? target : a);
+  const n = list.length;
+  setEditing(false);
+  toast(`Combined ${n} tapes into one.`);
+};
+
+function renderWall() {
+  const wall = $('#wall'), empty = $('#empty');
+  $('#editBtn').hidden = !albums.length;
+  if (!albums.length) {
+    if (editing) { editing = false; selected.clear(); document.body.classList.remove('editing'); $('#editbar').hidden = true; $('#editBtn').textContent = 'Edit wall'; }
+    wall.hidden = true; empty.hidden = false; return;
+  }
+  wall.hidden = false; empty.hidden = true;
+  const arr = sortedAlbums();
+  let html = '';
+  for (let i = 0; i < arr.length; i += 10) html += '<div class="tower">' + arr.slice(i, i + 10).map(spineHTML).join('') + '</div>';
+  wall.innerHTML = html;
+}
+$('#wall').addEventListener('click', e => {
+  const b = e.target.closest('.spine'); if (!b) return;
+  if (!editing) { openCard(b.dataset.id); return; }
+  const id = b.dataset.id;
+  if (selected.has(id)) selected.delete(id); else selected.add(id);
+  b.classList.toggle('sel', selected.has(id)); b.setAttribute('aria-pressed', selected.has(id));
+  updateEditBar();
+});
+
+/* ---------- J-card ---------- */
+function sidesOf(a) {
+  const ts = a.trackIds.map(id => tracks.get(id)).filter(Boolean);
+  const n = ts.length, tot = ts.reduce((s, t) => s + (t.duration || 0), 0);
+  let split = Math.ceil(n / 2);
+  if (n > 1 && tot > 0 && ts.every(t => t.duration > 0)) {
+    let c = 0, best = 1, bd = Infinity;
+    for (let i = 1; i < n; i++) { c += ts[i - 1].duration; const d = Math.abs(c - tot / 2); if (d < bd) { bd = d; best = i; } }
+    split = best;
+  }
+  if (n <= 1) split = n;
+  return { ts, split };
+}
+function openCard(id) {
+  const a = albums.find(x => x.id === id); if (!a) return;
+  const { ts, split } = sidesOf(a);
+  const url = coverOf(a), t = textOn(a.color);
+  const cover = url
+    ? `<div class="cover" style="--c:${a.color};background-image:url('${url}')"></div>`
+    : `<div class="cover gen" style="--c:${a.color};--t:${t}"><b>${esc(a.title)}</b><span>${esc(a.artist)}</span></div>`;
+  const side = (label, list, off) => {
+    if (!list.length) return '';
+    const len = list.reduce((s, x) => s + (x.duration || 0), 0);
+    return `<div class="side"><h3>${label}<span>${len ? fmt(len) : ''}</span></h3>` +
+      list.map((x, i) => `<button class="trk" data-i="${i + off}"><span class="n">${i + off + 1}</span><span>${esc(x.title)}${x.artist && norm(x.artist) !== norm(a.artist) ? `<small class="ta">${esc(x.artist)}</small>` : ''}</span><span class="d">${x.duration ? fmt(x.duration) : ''}</span></button>`).join('') + '</div>';
+  };
+  const dlg = $('#jcard');
+  dlg.innerHTML = `${cover}<button class="close" aria-label="Close">×</button>
+    <div class="jc-body">
+      <h2 class="jc-title">${esc(a.title)}</h2>
+      <p class="jc-artist">${esc(a.artist)}${a.year ? ', ' + esc(a.year) : ''}</p>
+      ${a.realTape ? '<p class="real-note">Recorded from a real cassette</p>' : ''}
+      ${side('Side A', ts.slice(0, split), 0)}${side('Side B', ts.slice(split), split)}
+      <div class="jc-actions">
+        <button class="btn" data-play="0">Play side A</button>
+        ${split < ts.length ? `<button class="btn" data-play="${split}">Play side B</button>` : ''}
+        <button class="btn plain" data-edit>Edit label</button>
+        <button class="btn remove" data-remove>Remove tape</button>
+      </div>
+    </div>`;
+  dlg.onclick = e => {
+    if (e.target === dlg || e.target.closest('.close')) { dlg.close(); return; }
+    const trk = e.target.closest('.trk');
+    const pl = e.target.closest('[data-play]');
+    const rm = e.target.closest('[data-remove]');
+    if (e.target.closest('[data-edit]')) { openEditor(a); return; }
+    if (trk || pl) { dlg.close(); insert(a, +(trk ? trk.dataset.i : pl.dataset.play)); }
+    else if (rm) {
+      if (!rm.dataset.armed) { rm.dataset.armed = '1'; rm.textContent = 'Tap again to remove'; return; }
+      dlg.close(); removeAlbum(a);
+    }
+  };
+  if (!dlg.open) { if (dlg.showModal) dlg.showModal(); else dlg.setAttribute('open', ''); }
+  dlg.scrollTop = 0;
+}
+
+/* ---------- label editor ---------- */
+function openEditor(a) {
+  const draft = { title: a.title, artist: a.artist, year: a.year || '', color: a.color, font: a.font || 'type', realTape: !!a.realTape };
+  const colors = [...new Set([a.color, ...PALETTE])];
+  const dlg = $('#jcard');
+  dlg.innerHTML = `<div class="jc-body ed">
+      <h2 class="jc-title">Edit label</h2>
+      <div class="preview"><div class="spine" id="edPrev"><span class="yr"></span><span class="lbl"></span></div></div>
+      <label class="fld">Album<input id="edTitle" value="${esc(draft.title)}" autocomplete="off"></label>
+      <div class="row2">
+        <label class="fld">Artist<input id="edArtist" value="${esc(draft.artist)}" autocomplete="off"></label>
+        <label class="fld">Year<input id="edYear" value="${esc(draft.year)}" inputmode="numeric" maxlength="4" autocomplete="off"></label>
+      </div>
+      <fieldset><legend>Label color</legend><div class="swatches">
+        ${colors.map(c => `<button type="button" class="sw" data-color="${c}" style="--c:${c}" aria-label="Color ${c}"></button>`).join('')}
+        <label class="custom">Custom<input type="color" id="edColor" value="${draft.color}"></label>
+      </div></fieldset>
+      <fieldset><legend>Lettering</legend><div class="fonts">
+        ${Object.entries(FONTS).map(([k, F]) => `<button type="button" class="fontopt" data-font="${k}" style="--f:${F.f};--fs:${F.fs};--fw:${F.fw}">${F.label}</button>`).join('')}
+      </div></fieldset>
+      <label class="check"><input type="checkbox" id="edReal"${draft.realTape ? ' checked' : ''}>Recorded from a real cassette
+        <small>Plays without the added tape effect, since it already has the real thing.</small></label>
+      <div class="jc-actions">
+        <button class="btn" id="edSave">Save label</button>
+        <button class="btn plain" id="edCancel">Cancel</button>
+      </div>
+    </div>`;
+  const paint = () => {
+    const prev = $('#edPrev'), F = FONTS[draft.font];
+    prev.style.cssText = `--c:${draft.color};--t:${textOn(draft.color)};--f:${F.f};--fs:${F.fs};--fw:${F.fw}`;
+    prev.querySelector('.yr').textContent = /\d{4}/.test(draft.year) ? '’' + draft.year.slice(-2) : '';
+    prev.querySelector('.lbl').innerHTML = `${esc(draft.artist || 'Unknown artist')}<span class="al">${esc(draft.title || 'Untitled')}</span>`;
+    dlg.querySelectorAll('.sw').forEach(b => b.classList.toggle('on', b.dataset.color.toLowerCase() === draft.color.toLowerCase()));
+    dlg.querySelectorAll('.fontopt').forEach(b => { b.classList.toggle('on', b.dataset.font === draft.font); b.setAttribute('aria-pressed', b.dataset.font === draft.font); });
+  };
+  $('#edTitle').oninput = e => { draft.title = e.target.value; paint(); };
+  $('#edArtist').oninput = e => { draft.artist = e.target.value; paint(); };
+  $('#edYear').oninput = e => { draft.year = e.target.value.replace(/\D/g, '').slice(0, 4); e.target.value = draft.year; paint(); };
+  $('#edColor').oninput = e => { draft.color = e.target.value; paint(); };
+  $('#edReal').onchange = e => { draft.realTape = e.target.checked; };
+  dlg.onclick = async e => {
+    if (e.target === dlg) { dlg.close(); return; }
+    const sw = e.target.closest('.sw'); if (sw) { draft.color = sw.dataset.color; $('#edColor').value = draft.color; paint(); return; }
+    const fo = e.target.closest('.fontopt'); if (fo) { draft.font = fo.dataset.font; paint(); return; }
+    if (e.target.closest('#edCancel')) { openCard(a.id); return; }
+    if (e.target.closest('#edSave')) {
+      a.title = draft.title.trim() || a.title;
+      a.artist = draft.artist.trim() || a.artist;
+      a.year = /^\d{4}$/.test(draft.year) ? draft.year : '';
+      a.color = draft.color; a.font = draft.font; a.realTape = draft.realTape;
+      a.key = norm(a.artist) + '|' + norm(a.title);
+      await store.put('albums', a);
+      renderWall();
+      if (cur && cur.album.id === a.id) { updateNow(); applyMode(); }
+      openCard(a.id);
+      toast('Label saved.');
+    }
+  };
+  paint();
+  dlg.scrollTop = 0;
+  $('#edTitle').focus({ preventScroll: true });
+}
+
+async function removeAlbum(a, quiet) {
+  if (cur && cur.album.id === a.id) eject();
+  for (const id of a.trackIds) { await store.del('tracks', id); await store.del('blobs', id); tracks.delete(id); }
+  await store.del('albums', a.id);
+  albums = albums.filter(x => x.id !== a.id);
+  if (coverURL.has(a.id)) { URL.revokeObjectURL(coverURL.get(a.id)); coverURL.delete(a.id); }
+  if (!quiet) { renderWall(); toast('Tape removed.'); }
+}
+
+/* ---------- audio + tape sound ---------- */
+const audio = new Audio(); audio.preload = 'auto';
+let curURL = null, reversing = null;
+let ctx = null, nodes = null;
+const MODES = {
+  clean:  { lp: 20000, low: 0,   drive: 0,   hiss: 0,     wow: 0,       flut: 0 },
+  normal: { lp: 11500, low: 1.5, drive: .25, hiss: .010,  wow: .0004,   flut: .00003 },
+  chrome: { lp: 15000, low: 1,   drive: .15, hiss: .005,  wow: .00025,  flut: .00002 },
+  worn:   { lp: 6500,  low: 3,   drive: .55, hiss: .020,  wow: .0012,   flut: .00007 }
+};
+const effMode = () => (cur && cur.album.realTape) ? 'clean' : mode;
+function curve(k) {
+  const n = 2048, c = new Float32Array(n);
+  for (let i = 0; i < n; i++) { const x = i * 2 / n - 1; c[i] = (1 + k) * x / (1 + k * Math.abs(x)); }
+  return c;
+}
+function ensureGraph() {
+  if (ctx) return;
+  try {
+    ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const src = ctx.createMediaElementSource(audio);
+    const shaper = ctx.createWaveShaper(); shaper.oversample = '2x';
+    const low = ctx.createBiquadFilter(); low.type = 'peaking'; low.frequency.value = 110; low.Q.value = .9;
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.Q.value = .5;
+    const delay = ctx.createDelay(0.1); delay.delayTime.value = 0.02;
+    const out = ctx.createGain();
+    const wow = ctx.createOscillator(); wow.frequency.value = .55; const wowG = ctx.createGain();
+    const flut = ctx.createOscillator(); flut.frequency.value = 6.5; const flutG = ctx.createGain();
+    wow.connect(wowG).connect(delay.delayTime); flut.connect(flutG).connect(delay.delayTime);
+    wow.start(); flut.start();
+    src.connect(shaper).connect(low).connect(lp).connect(delay).connect(out).connect(ctx.destination);
+    const buf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate), ch = buf.getChannelData(0);
+    for (let i = 0; i < ch.length; i++) ch[i] = Math.random() * 2 - 1;
+    const noise = ctx.createBufferSource(); noise.buffer = buf; noise.loop = true;
+    const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 3500;
+    const hissG = ctx.createGain(); hissG.gain.value = 0;
+    noise.connect(hp).connect(hissG).connect(ctx.destination); noise.start();
+    nodes = { shaper, low, lp, out, wowG, flutG, hissG };
+    applyMode();
+  } catch (e) { console.warn('Tape effect unavailable', e); ctx = null; nodes = null; }
+}
+function applyMode() {
+  if (!ctx || !nodes) return;
+  const p = MODES[effMode()] || MODES.clean, now = ctx.currentTime;
+  nodes.lp.frequency.setTargetAtTime(p.lp, now, .05);
+  nodes.low.gain.setTargetAtTime(p.low, now, .05);
+  nodes.shaper.curve = curve(p.drive);
+  nodes.out.gain.setTargetAtTime(1 / (1 + p.drive * .5), now, .05);
+  nodes.wowG.gain.setTargetAtTime(p.wow, now, .1);
+  nodes.flutG.gain.setTargetAtTime(p.flut, now, .1);
+  gateHiss();
+}
+function gateHiss() {
+  if (!ctx || !nodes) return;
+  nodes.hissG.gain.setTargetAtTime(audio.paused ? 0 : (MODES[effMode()] || MODES.clean).hiss, ctx.currentTime, .08);
+}
+
+function insert(album, idx) {
+  clearTimeout(reversing); reversing = null;
+  const { ts, split } = sidesOf(album);
+  if (!ts.length) { toast('This tape has no tracks.'); return; }
+  cur = { album, ts, split, idx };
+  applyMode();
+  renderWall();
+  loadTrack(idx, true);
+}
+async function loadTrack(i, autoplay) {
+  if (!cur) return;
+  cur.idx = i;
+  const t = cur.ts[i];
+  const b = await store.get('blobs', t.id);
+  if (!b || !b.blob) { toast('That track’s file is missing. Remove the tape and add the album again.'); updateNow(); return; }
+  if (curURL) URL.revokeObjectURL(curURL);
+  curURL = URL.createObjectURL(b.blob);
+  audio.src = curURL;
+  updateNow();
+  if (autoplay) await play();
+}
+async function play() {
+  if (!cur) return;
+  if (effMode() !== 'clean') ensureGraph();
+  applyMode();
+  if (ctx && ctx.state === 'suspended') { try { await ctx.resume(); } catch {} }
+  try { await audio.play(); } catch { toast('Press play to start the tape.'); }
+}
+function next(auto) {
+  if (!cur) return;
+  clearTimeout(reversing); reversing = null;
+  const i = cur.idx + 1;
+  if (i >= cur.ts.length) {
+    if (auto) { toast('That’s the end of the tape.'); }
+    return;
+  }
+  if (auto && i === cur.split) {
+    $('#nowSub').textContent = 'Auto-reverse to side B';
+    reversing = setTimeout(() => { reversing = null; loadTrack(i, true); }, 1400);
+    return;
+  }
+  loadTrack(i, auto || !audio.paused);
+}
+function prev() {
+  if (!cur) return;
+  if (audio.currentTime > 3) { audio.currentTime = 0; return; }
+  loadTrack(Math.max(0, cur.idx - 1), !audio.paused);
+}
+function flip() {
+  if (!cur || cur.split >= cur.ts.length) return;
+  loadTrack(cur.idx < cur.split ? cur.split : 0, !audio.paused);
+}
+function eject() {
+  clearTimeout(reversing); reversing = null;
+  audio.pause(); audio.removeAttribute('src'); audio.load();
+  if (curURL) { URL.revokeObjectURL(curURL); curURL = null; }
+  cur = null; updateNow(); renderWall();
+  if ('mediaSession' in navigator) navigator.mediaSession.metadata = null;
+}
+
+function updateNow() {
+  const has = !!cur;
+  ['#prevBtn', '#playBtn', '#nextBtn', '#ejectBtn', '#seek'].forEach(s => $(s).disabled = !has);
+  $('#flipBtn').disabled = !has || cur.split >= cur.ts.length;
+  $('#cassette').style.display = has ? '' : 'none';
+  $('#noTape').style.display = has ? 'none' : '';
+  if (!has) {
+    $('#realNote').hidden = true; $('#modeWrap').hidden = false;
+    $('#nowTitle').textContent = 'No tape in the deck';
+    $('#nowSub').textContent = albums.length ? 'Pick one off the wall' : 'Add some albums to get started';
+    $('#sideBadge').textContent = 'A'; $('#time').textContent = '0:00'; $('#dur').textContent = '0:00'; $('#seek').value = 0;
+    setPlayIcon(false); return;
+  }
+  const a = cur.album, t = cur.ts[cur.idx], side = cur.idx < cur.split ? 'A' : 'B';
+  $('#nowTitle').textContent = t.title;
+  const who = t.artist && norm(t.artist) !== norm(a.artist) ? t.artist : a.artist;
+  $('#nowSub').textContent = who + ', ' + a.title;
+  $('#sideBadge').textContent = side;
+  $('#tapeLabel').style.fill = a.color;
+  const tc = textOn(a.color);
+  $('#tapeText').style.fill = tc; $('#tapeSide').style.fill = tc;
+  $('#tapeText').style.fontFamily = fontOf(a).f;
+  $('#realNote').hidden = !a.realTape; $('#modeWrap').hidden = !!a.realTape;
+  $('#tapeText').textContent = a.title.length > 24 ? a.title.slice(0, 23) + '…' : a.title;
+  $('#tapeSide').textContent = side;
+  if ('mediaSession' in navigator && window.MediaMetadata) {
+    const url = coverOf(a);
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: t.title, artist: who, album: a.title,
+      artwork: url ? [{ src: url, sizes: '512x512', type: a.cover.type || 'image/jpeg' }] : []
+    });
+  }
+}
+function setPlayIcon(playing) {
+  $('#playIcon').setAttribute('d', playing ? 'M6 5h4v14H6zM14 5h4v14h-4z' : 'M7 5v14l12-7z');
+  $('#playBtn').setAttribute('aria-label', playing ? 'Pause' : 'Play');
+  $('#playBtn').title = playing ? 'Pause' : 'Play';
+}
+
+let dragging = false;
+audio.addEventListener('play', () => { setPlayIcon(true); gateHiss(); if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing'; });
+audio.addEventListener('pause', () => { setPlayIcon(false); gateHiss(); if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused'; });
+audio.addEventListener('ended', () => next(true));
+audio.addEventListener('loadedmetadata', () => {
+  if (!cur) return;
+  const t = cur.ts[cur.idx];
+  $('#dur').textContent = fmt(audio.duration);
+  if (!t.duration && isFinite(audio.duration)) { t.duration = audio.duration; store.put('tracks', t); }
+});
+audio.addEventListener('timeupdate', () => {
+  if (!cur || dragging) return;
+  $('#time').textContent = fmt(audio.currentTime);
+  if (audio.duration) $('#seek').value = Math.round(audio.currentTime / audio.duration * 1000);
+});
+$('#seek').addEventListener('input', e => { dragging = true; if (audio.duration) $('#time').textContent = fmt(e.target.value / 1000 * audio.duration); });
+$('#seek').addEventListener('change', e => { dragging = false; if (audio.duration) audio.currentTime = e.target.value / 1000 * audio.duration; });
+
+$('#playBtn').onclick = () => audio.paused ? play() : audio.pause();
+$('#nextBtn').onclick = () => next(false);
+$('#prevBtn').onclick = prev;
+$('#flipBtn').onclick = flip;
+$('#ejectBtn').onclick = eject;
+$('#mode').onchange = e => { mode = e.target.value; LS.set('tapeMode', mode); if (mode !== 'clean') ensureGraph(); applyMode(); };
+if ('mediaSession' in navigator) {
+  const ms = navigator.mediaSession;
+  try {
+    ms.setActionHandler('play', play);
+    ms.setActionHandler('pause', () => audio.pause());
+    ms.setActionHandler('nexttrack', () => next(false));
+    ms.setActionHandler('previoustrack', prev);
+  } catch {}
+}
+document.addEventListener('keydown', e => {
+  if (e.code === 'Space' && e.target === document.body && cur) { e.preventDefault(); audio.paused ? play() : audio.pause(); }
+});
+
+/* ---------- reels ---------- */
+function sideProgress() {
+  const { ts, split, idx } = cur;
+  const s = idx < split ? 0 : split, e = idx < split ? split : ts.length;
+  const ct = audio.currentTime || 0;
+  if (ts.slice(s, e).every(t => t.duration > 0)) {
+    let tot = 0, before = 0;
+    for (let i = s; i < e; i++) { tot += ts[i].duration; if (i < idx) before += ts[i].duration; }
+    return Math.min(1, (before + ct) / tot);
+  }
+  const d = audio.duration || 1;
+  return Math.min(1, ((idx - s) + Math.min(1, ct / d)) / Math.max(1, e - s));
+}
+let angL = 0, angR = 0, last = performance.now();
+const packL = $('#packL'), packR = $('#packR'), hubL = $('#hubL'), hubR = $('#hubR');
+function frame(now) {
+  const dt = Math.min(.1, (now - last) / 1000); last = now;
+  if (cur) {
+    const p = reversing ? 1 : sideProgress();
+    const R0 = 13, R1 = 36;
+    const rL = Math.sqrt(R0 * R0 + (1 - p) * (R1 * R1 - R0 * R0));
+    const rR = Math.sqrt(R0 * R0 + p * (R1 * R1 - R0 * R0));
+    packL.setAttribute('r', rL.toFixed(2)); packR.setAttribute('r', rR.toFixed(2));
+    if (!audio.paused && !reduceMotion) {
+      const v = 40;
+      angL = (angL + dt * v / rL * 57.2958) % 360;
+      angR = (angR + dt * v / rR * 57.2958) % 360;
+      hubL.setAttribute('transform', `translate(76 57) rotate(${angL.toFixed(1)})`);
+      hubR.setAttribute('transform', `translate(144 57) rotate(${angR.toFixed(1)})`);
+    }
+  }
+  requestAnimationFrame(frame);
+}
+
+/* ---------- toast, layout, inputs ---------- */
+let toastTimer;
+function toast(msg, sticky) {
+  const t = $('#toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTimer);
+  if (!sticky) toastTimer = setTimeout(() => t.classList.remove('show'), 3200);
+}
+const deck = $('#deck');
+const setDeckH = () => document.documentElement.style.setProperty('--deck-h', deck.offsetHeight + 'px');
+if (window.ResizeObserver) new ResizeObserver(setDeckH).observe(deck); else window.addEventListener('resize', setDeckH);
+setDeckH();
+
+const pick = () => $('#fileIn').click();
+$('#addBtn').onclick = pick; $('#addBtn2').onclick = pick;
+$('#fileIn').onchange = e => { const f = e.target.files; if (f && f.length) importFiles([...f]); e.target.value = ''; };
+$('#sort').onchange = e => { LS.set('tapeSort', e.target.value); renderWall(); };
+document.addEventListener('dragover', e => { e.preventDefault(); document.body.classList.add('dropping'); });
+document.addEventListener('dragleave', e => { if (!e.relatedTarget) document.body.classList.remove('dropping'); });
+document.addEventListener('drop', e => {
+  e.preventDefault(); document.body.classList.remove('dropping');
+  if (e.dataTransfer && e.dataTransfer.files.length) importFiles([...e.dataTransfer.files]);
+});
+
+/* ---------- start ---------- */
+(async () => {
+  try { db = await openDB(); } catch (e) { console.warn('IndexedDB unavailable', e); db = null; }
+  try {
+    albums = await store.all('albums');
+    (await store.all('tracks')).forEach(t => tracks.set(t.id, t));
+  } catch (e) { console.warn(e); }
+  $('#sort').value = LS.get('tapeSort', 'artist');
+  $('#mode').value = MODES[mode] ? mode : 'normal';
+  renderWall(); updateNow(); setDeckH();
+  requestAnimationFrame(frame);
+})();
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(e => console.warn('SW registration failed', e)));
+}
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 136" width="512" height="512">
+  <rect width="220" height="136" rx="14" fill="#2b2b2e"/>
+  <rect x="14" y="10" width="192" height="80" rx="4" fill="#e6e0d2"/>
+  <text x="110" y="60" text-anchor="middle" font-family="Georgia, serif" font-size="26" fill="#2a2118">TW</text>
+  <circle cx="76" cy="57" r="30" fill="none" stroke="#17120f" stroke-width="6"/>
+  <circle cx="144" cy="57" r="30" fill="none" stroke="#17120f" stroke-width="6"/>
+  <circle cx="76" cy="57" r="11" fill="#17120f"/>
+  <circle cx="144" cy="57" r="11" fill="#17120f"/>
+  <path d="M52 134 L64 100 H156 L168 134" fill="rgba(255,255,255,.07)"/>
+  <circle cx="84" cy="118" r="4" fill="#000"/><circle cx="136" cy="118" r="4" fill="#000"/>
+</svg>
