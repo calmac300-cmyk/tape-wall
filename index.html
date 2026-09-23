@@ -231,8 +231,10 @@ dialog.jcard::backdrop{background:rgba(12,7,3,.62)}
       <option value="artist">Artist</option>
       <option value="year">Year</option>
       <option value="added">Recently added</option>
+      <option value="lastplayed">Last played</option>
     </select>
   </label>
+  <button class="btn ghost" id="randomBtn" hidden>Pull a random tape</button>
   <button class="btn ghost" id="editBtn" hidden>Edit wall</button>
   <button class="btn" id="addBtn">Add tapes</button>
   <input type="file" id="fileIn" multiple accept="audio/*,.mp3,.m4a,.aac,.flac,.wav,.ogg,.opus,.aif,.aiff" hidden>
@@ -532,6 +534,7 @@ function sortedAlbums() {
   const arr = [...albums];
   if (s === 'artist') arr.sort((a, b) => k(a.artist).localeCompare(k(b.artist)) || (a.year || '').localeCompare(b.year || '') || k(a.title).localeCompare(k(b.title)));
   else if (s === 'year') arr.sort((a, b) => (a.year || '9999').localeCompare(b.year || '9999') || k(a.artist).localeCompare(k(b.artist)));
+  else if (s === 'lastplayed') arr.sort((a, b) => (b.lastPlayed || 0) - (a.lastPlayed || 0) || b.added - a.added);
   else arr.sort((a, b) => b.added - a.added);
   return arr;
 }
@@ -566,6 +569,17 @@ function updateEditBar() {
   const r = $('#removeSel'); r.disabled = n < 1; r.textContent = 'Remove'; delete r.dataset.armed;
 }
 $('#editBtn').onclick = () => setEditing(!editing);
+$('#randomBtn').onclick = () => {
+  if (!albums.length) return;
+  const pool = cur && albums.length > 1 ? albums.filter(x => x.id !== cur.album.id) : albums;
+  const a = pool[Math.floor(Math.random() * pool.length)];
+  const { ts } = sidesOf(a);
+  if (!ts.length) { toast('That tape has no tracks.'); return; }
+  const resumeIdx = a.lastTrackId ? ts.findIndex(x => x.id === a.lastTrackId) : -1;
+  const resumable = resumeIdx >= 0 && a.lastPos > 3;
+  insert(a, resumable ? resumeIdx : 0, resumable ? a.lastPos : 0);
+  toast(`Pulled off the shelf: ${a.artist} – ${a.title}`);
+};
 $('#selAll').onclick = () => {
   if (selected.size === albums.length) selected.clear(); else albums.forEach(a => selected.add(a.id));
   renderWall(); updateEditBar();
@@ -609,6 +623,7 @@ $('#combineBtn').onclick = async () => {
 function renderWall() {
   const wall = $('#wall'), empty = $('#empty');
   $('#editBtn').hidden = !albums.length;
+  $('#randomBtn').hidden = !albums.length;
   if (!albums.length) {
     if (editing) { editing = false; selected.clear(); document.body.classList.remove('editing'); $('#editbar').hidden = true; $('#editBtn').textContent = 'Edit wall'; }
     wall.hidden = true; empty.hidden = false; return;
@@ -654,6 +669,8 @@ function openCard(id) {
     return `<div class="side"><h3>${label}<span>${len ? fmt(len) : ''}</span></h3>` +
       list.map((x, i) => `<button class="trk" data-i="${i + off}"><span class="n">${i + off + 1}</span><span>${esc(x.title)}${x.artist && norm(x.artist) !== norm(a.artist) ? `<small class="ta">${esc(x.artist)}</small>` : ''}</span><span class="d">${x.duration ? fmt(x.duration) : ''}</span></button>`).join('') + '</div>';
   };
+  const resumeIdx = a.lastTrackId ? ts.findIndex(x => x.id === a.lastTrackId) : -1;
+  const resumable = resumeIdx >= 0 && a.lastPos > 3;
   const dlg = $('#jcard');
   dlg.innerHTML = `${cover}<button class="close" aria-label="Close">×</button>
     <div class="jc-body">
@@ -662,8 +679,9 @@ function openCard(id) {
       ${a.realTape ? '<p class="real-note">Recorded from a real cassette</p>' : ''}
       ${side('Side A', ts.slice(0, split), 0)}${side('Side B', ts.slice(split), split)}
       <div class="jc-actions">
-        <button class="btn" data-play="0">Play side A</button>
-        ${split < ts.length ? `<button class="btn" data-play="${split}">Play side B</button>` : ''}
+        ${resumable ? `<button class="btn" data-resume>Resume, ${fmt(a.lastPos)}</button>` : ''}
+        <button class="btn${resumable ? ' plain' : ''}" data-play="0">Play side A</button>
+        ${split < ts.length ? `<button class="btn${resumable ? ' plain' : ''}" data-play="${split}">Play side B</button>` : ''}
         <button class="btn plain" data-edit>Edit label</button>
         <button class="btn remove" data-remove>Remove tape</button>
       </div>
@@ -672,9 +690,11 @@ function openCard(id) {
     if (e.target === dlg || e.target.closest('.close')) { dlg.close(); return; }
     const trk = e.target.closest('.trk');
     const pl = e.target.closest('[data-play]');
+    const rs = e.target.closest('[data-resume]');
     const rm = e.target.closest('[data-remove]');
     if (e.target.closest('[data-edit]')) { openEditor(a); return; }
-    if (trk || pl) { dlg.close(); insert(a, +(trk ? trk.dataset.i : pl.dataset.play)); }
+    if (rs) { dlg.close(); insert(a, resumeIdx, a.lastPos); }
+    else if (trk || pl) { dlg.close(); insert(a, +(trk ? trk.dataset.i : pl.dataset.play)); }
     else if (rm) {
       if (!rm.dataset.armed) { rm.dataset.armed = '1'; rm.textContent = 'Tap again to remove'; return; }
       dlg.close(); removeAlbum(a);
@@ -813,16 +833,28 @@ function gateHiss() {
   nodes.hissG.gain.setTargetAtTime(audio.paused ? 0 : (MODES[effMode()] || MODES.clean).hiss, ctx.currentTime, .08);
 }
 
-function insert(album, idx) {
+let lastPosSave = 0;
+function savePosition() {
+  if (!cur) return;
+  const a = cur.album, t = cur.ts[cur.idx];
+  a.lastTrackId = t.id; a.lastPos = audio.currentTime; a.lastPlayed = Date.now();
+  store.put('albums', a);
+}
+function clearResume(a) {
+  a.lastTrackId = null; a.lastPos = 0;
+  store.put('albums', a);
+}
+function insert(album, idx, seekTo) {
   clearTimeout(reversing); reversing = null;
   const { ts, split } = sidesOf(album);
   if (!ts.length) { toast('This tape has no tracks.'); return; }
   cur = { album, ts, split, idx };
   applyMode();
   renderWall();
-  loadTrack(idx, true);
+  loadTrack(idx, true, seekTo);
 }
-async function loadTrack(i, autoplay) {
+let pendingSeek = null;
+async function loadTrack(i, autoplay, seekTo) {
   if (!cur) return;
   cur.idx = i;
   const t = cur.ts[i];
@@ -830,6 +862,7 @@ async function loadTrack(i, autoplay) {
   if (!b || !b.blob) { toast('That track’s file is missing. Remove the tape and add the album again.'); updateNow(); return; }
   if (curURL) URL.revokeObjectURL(curURL);
   curURL = URL.createObjectURL(b.blob);
+  pendingSeek = typeof seekTo === 'number' && seekTo > 0 ? seekTo : null;
   audio.src = curURL;
   updateNow();
   if (autoplay) await play();
@@ -846,6 +879,7 @@ function next(auto) {
   clearTimeout(reversing); reversing = null;
   const i = cur.idx + 1;
   if (i >= cur.ts.length) {
+    clearResume(cur.album);
     if (auto) { toast('That’s the end of the tape.'); }
     return;
   }
@@ -867,6 +901,7 @@ function flip() {
 }
 function eject() {
   clearTimeout(reversing); reversing = null;
+  if (cur && audio.currentTime > 3) savePosition();
   audio.pause(); audio.removeAttribute('src'); audio.load();
   if (curURL) { URL.revokeObjectURL(curURL); curURL = null; }
   cur = null; updateNow(); renderWall();
@@ -914,18 +949,21 @@ function setPlayIcon(playing) {
 
 let dragging = false;
 audio.addEventListener('play', () => { setPlayIcon(true); gateHiss(); if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing'; });
-audio.addEventListener('pause', () => { setPlayIcon(false); gateHiss(); if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused'; });
+audio.addEventListener('pause', () => { setPlayIcon(false); gateHiss(); savePosition(); if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused'; });
 audio.addEventListener('ended', () => next(true));
 audio.addEventListener('loadedmetadata', () => {
   if (!cur) return;
   const t = cur.ts[cur.idx];
   $('#dur').textContent = fmt(audio.duration);
   if (!t.duration && isFinite(audio.duration)) { t.duration = audio.duration; store.put('tracks', t); }
+  if (pendingSeek != null) { audio.currentTime = Math.min(pendingSeek, audio.duration || pendingSeek); pendingSeek = null; }
 });
 audio.addEventListener('timeupdate', () => {
   if (!cur || dragging) return;
   $('#time').textContent = fmt(audio.currentTime);
   if (audio.duration) $('#seek').value = Math.round(audio.currentTime / audio.duration * 1000);
+  const now = Date.now();
+  if (now - lastPosSave > 5000) { lastPosSave = now; savePosition(); }
 });
 $('#seek').addEventListener('input', e => { dragging = true; if (audio.duration) $('#time').textContent = fmt(e.target.value / 1000 * audio.duration); });
 $('#seek').addEventListener('change', e => { dragging = false; if (audio.duration) audio.currentTime = e.target.value / 1000 * audio.duration; });

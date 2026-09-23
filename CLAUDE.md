@@ -20,6 +20,9 @@ What it does today:
 - **Edit wall mode:** Multi-select to remove tapes or combine several into one.
 - **Deck:** SVG cassette with reels whose tape packs shrink and grow with side progress, and auto-reverse from side A to side B. Controls: previous, play/pause, next, flip, eject, and a seek bar. Lock-screen controls use the Media Session API.
 - **Sound menu:** A Web Audio "tape" effect (lowpass, saturation, hiss, wow and flutter via a modulated delay) with Clean, Normal, Chrome, and Worn presets. Tapes flagged as real cassette rips always play clean.
+- **Resume playback:** Position is saved per tape (throttled while playing, and on pause/eject) as `lastTrackId`/`lastPos`/`lastPlayed` on the album record. The J-card shows a "Resume" button when a saved position exists; it's cleared when a tape plays to the end.
+- **Pull a random tape:** Header button picks a random tape (excluding whichever is currently in the deck, if any) and inserts it, resuming from its saved position if there is one.
+- **Sort by "Last played":** Uses the same `lastPlayed` timestamp; unplayed tapes sort to the bottom.
 
 ## Known limitations of the prototype
 
@@ -35,7 +38,7 @@ What it does today:
 - **Ideas raised so far (not yet decided):**
   - handwritten-style mixtape labels
   - a mark for genuine tape rips
-  - remembering playback position per tape
-  - a random "pull a tape off the shelf" button
+  - search/filter on the wall (once the library grows)
+  - a split tool for combined tapes
 
-Decided [2026-09-23]: PWA over Expo/React Native, despite the iOS background-playback caveat above.
+Decided [2026-09-23]: PWA over Expo/React Native, despite the iOS background-playback caveat above. Also added that day: resume-per-tape, "pull a random tape" button, and "Last played" sort.
