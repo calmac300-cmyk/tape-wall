@@ -643,7 +643,7 @@ $('#combineBtn').onclick = async () => {
   const title = [...counts].sort((x, y) => y[1] - x[1])[0][0];
   const artist = new Set(list.map(a => norm(a.artist))).size === 1 ? list[0].artist : 'Various artists';
   const base = list.find(a => a.cover) || list[0];
-  const target = { ...base, title, artist, key: norm(artist) + '|' + norm(title), year: base.year || (list.find(a => a.year) || {}).year || '', trackIds: [] };
+  const target = { ...base, splitAt: null, title, artist, key: norm(artist) + '|' + norm(title), year: base.year || (list.find(a => a.year) || {}).year || '', trackIds: [] };
   for (const a of list) {
     for (const id of a.trackIds) {
       const t = tracks.get(id); if (!t) continue;
@@ -697,8 +697,9 @@ function sidesOf(a) {
     for (let i = 1; i < n; i++) { c += ts[i - 1].duration; const d = Math.abs(c - tot / 2); if (d < bd) { bd = d; best = i; } }
     split = best;
   }
+  if (a.splitAt >= 1 && a.splitAt < n) split = a.splitAt;
   if (n <= 1) split = n;
-  return { ts, split };
+  return { ts, split, auto: !(a.splitAt >= 1 && a.splitAt < n) };
 }
 function openCard(id) {
   const a = albums.find(x => x.id === id); if (!a) return;
@@ -757,6 +758,7 @@ function openEditor(a) {
   const draft = {
     title: a.title, artist: a.artist, year: a.year || '', color: a.color, font: a.font || 'type', realTape: !!a.realTape,
     textColor: a.textColor || null,
+    splitAt: a.splitAt || 0,
     pixelArt: {
       w: PIX_W, h: PIX_H,
       cells: (a.pixelArt && a.pixelArt.cells && a.pixelArt.cells.length === PIX_W * PIX_H) ? a.pixelArt.cells.slice() : new Array(PIX_W * PIX_H).fill(null)
@@ -764,6 +766,7 @@ function openEditor(a) {
     pixColor: PALETTE[0], pixErase: false
   };
   const colors = [...new Set([a.color, ...PALETTE])];
+  const sd = { ts: sidesOf(a).ts, autoSplit: sidesOf({ ...a, splitAt: null }).split };
   const dlg = $('#jcard');
   dlg.innerHTML = `<div class="jc-body ed">
       <h2 class="jc-title">Edit label</h2>
@@ -786,6 +789,11 @@ function openEditor(a) {
       <fieldset><legend>Lettering</legend><div class="fonts">
         ${Object.entries(FONTS).map(([k, F]) => `<button type="button" class="fontopt" data-font="${k}" style="--f:${F.f};--fs:${F.fs};--fw:${F.fw}">${F.label}</button>`).join('')}
       </div></fieldset>
+      ${sd.ts.length > 1 ? `<fieldset><legend>Side break</legend>
+        <select id="edSplit" style="width:100%;font:inherit;font-size:17px;padding:7px 9px;color:var(--paper-ink);background:#fffdf8;border:1.5px solid rgba(0,0,0,.25);border-radius:5px">
+          <option value="0">Auto (side A ends after track ${sd.autoSplit})</option>
+          ${sd.ts.slice(0, -1).map((t, i) => `<option value="${i + 1}"${draft.splitAt === i + 1 ? ' selected' : ''}>Side A ends after track ${i + 1}: ${esc(t.title)}</option>`).join('')}
+        </select></fieldset>` : ''}
       <fieldset><legend>Pixel art (cover + wall badge, used when there's no embedded artwork)</legend>
         <div class="pixgrid" id="pixGrid" style="grid-template-columns:repeat(${PIX_W},1fr);aspect-ratio:${PIX_W}/${PIX_H}">
           ${Array.from({ length: PIX_W * PIX_H }, (_, i) => `<div class="pixcell" data-i="${i}"></div>`).join('')}
@@ -834,6 +842,7 @@ function openEditor(a) {
   $('#edColor').oninput = e => { draft.color = e.target.value; paint(); };
   $('#edTextColor').oninput = e => { draft.textColor = e.target.value; paint(); };
   $('#edReal').onchange = e => { draft.realTape = e.target.checked; };
+  if ($('#edSplit')) $('#edSplit').onchange = e => { draft.splitAt = +e.target.value; };
   $('#pixColor').oninput = e => { draft.pixColor = e.target.value; draft.pixErase = false; paintTools(); };
   const grid = $('#pixGrid');
   grid.addEventListener('pointerdown', e => {
@@ -865,12 +874,12 @@ function openEditor(a) {
       a.title = draft.title.trim() || a.title;
       a.artist = draft.artist.trim() || a.artist;
       a.year = /^\d{4}$/.test(draft.year) ? draft.year : '';
-      a.color = draft.color; a.font = draft.font; a.realTape = draft.realTape; a.textColor = draft.textColor;
+      a.color = draft.color; a.font = draft.font; a.realTape = draft.realTape; a.textColor = draft.textColor; a.splitAt = draft.splitAt || null;
       a.pixelArt = draft.pixelArt.cells.some(Boolean) ? { w: PIX_W, h: PIX_H, cells: draft.pixelArt.cells } : null;
       a.key = norm(a.artist) + '|' + norm(a.title);
       await store.put('albums', a);
       renderWall();
-      if (cur && cur.album.id === a.id) { updateNow(); applyMode(); }
+      if (cur && cur.album.id === a.id) { cur.split = sidesOf(a).split; updateNow(); applyMode(); }
       openCard(a.id);
       toast('Label saved.');
     }
