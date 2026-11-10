@@ -125,18 +125,27 @@ button,select{font:inherit}
 
 .deck{
   position:fixed;left:0;right:0;bottom:0;z-index:10;
-  padding:14px 16px calc(14px + env(safe-area-inset-bottom,0px));
+  padding:8px 16px calc(10px + env(safe-area-inset-bottom,0px));
+  animation:deckUp .28s ease-out;
   background:linear-gradient(180deg,var(--deck),var(--deck-2));color:var(--deck-ink);
   border-top:2px solid rgba(255,255,255,.35);box-shadow:0 -8px 20px rgba(0,0,0,.35);
 }
-.deck-fascia{max-width:420px;margin:0 auto}
+.deck[hidden]{display:none}
+@keyframes deckUp{from{transform:translateY(100%)}to{transform:none}}
+.deck-fascia{max-width:420px;margin:0 auto;position:relative}
+.deck-toggle{display:block;margin:-2px auto 4px;width:64px;height:20px;border:0;border-radius:10px;cursor:pointer;background:rgba(0,0,0,.14);color:var(--deck-ink);padding:0}
+.deck-toggle svg{width:18px;height:18px;fill:currentColor;vertical-align:middle;transition:transform .2s}
+.deck.mini .deck-toggle svg{transform:rotate(180deg)}
+.deck.mini .window,.deck.mini .counter,.deck.mini .mode,.deck.mini #prevBtn,.deck.mini #flipBtn,.deck.mini #ejectBtn{display:none}
+.deck.mini .controls{margin-top:6px;padding:6px}
+.deck.mini .info{margin-top:2px}
 .window{
-  background:var(--bezel);border-radius:10px;padding:10px;
+  background:var(--bezel);border-radius:10px;padding:6px;
   border:1px solid rgba(0,0,0,.55);
   box-shadow:inset 0 4px 12px rgba(0,0,0,.85),inset 0 -1px 0 rgba(255,255,255,.08);
 }
-.window svg{display:block;width:100%;max-width:300px;height:auto;margin:0 auto}
-.info{min-width:0;margin-top:10px;padding:0 2px}
+.window svg{display:block;width:100%;max-width:190px;height:auto;margin:0 auto}
+.info{min-width:0;margin-top:6px;padding:0 2px}
 .now-title{font-weight:600;font-size:21px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .now-sub{color:var(--deck-muted);font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .counter{display:flex;align-items:center;gap:10px;margin-top:6px;font-variant-numeric:tabular-nums;font-size:16px}
@@ -144,12 +153,12 @@ button,select{font:inherit}
 .counter input{flex:1;min-width:60px;accent-color:var(--accent)}
 .controls{
   display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;
-  margin-top:12px;padding:10px 10px 8px;border-radius:8px;
+  margin-top:8px;padding:7px 10px 6px;border-radius:8px;
   background:linear-gradient(180deg,rgba(0,0,0,.12),rgba(0,0,0,.03));
   box-shadow:inset 0 1px 0 rgba(255,255,255,.2),inset 0 -1px 5px rgba(0,0,0,.25);
 }
 .key{
-  display:grid;place-items:center;width:52px;height:44px;padding:0;border:0;border-radius:5px;cursor:pointer;
+  display:grid;place-items:center;width:52px;height:40px;padding:0;border:0;border-radius:5px;cursor:pointer;
   color:var(--deck-ink);background:linear-gradient(var(--deck),var(--deck-2));
   box-shadow:0 3px 0 rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.5);
 }
@@ -281,8 +290,9 @@ dialog.jcard::backdrop{background:rgba(12,7,3,.62)}
   <p class="fine">Files stay on this device. Nothing is uploaded.</p>
 </section>
 
-<section class="deck" id="deck" aria-label="Tape deck">
+<section class="deck" id="deck" aria-label="Tape deck" hidden>
   <div class="deck-fascia">
+    <button class="deck-toggle" id="deckToggle" aria-label="Shrink or expand the deck" title="Shrink / expand"><svg viewBox="0 0 24 24"><path d="M7.4 8.6 12 13.2l4.6-4.6L18 10l-6 6-6-6z"/></svg></button>
     <div class="window">
       <svg viewBox="0 0 220 136" aria-hidden="true">
         <defs><clipPath id="win"><rect x="44" y="36" width="132" height="42" rx="6"/></clipPath></defs>
@@ -1034,6 +1044,7 @@ function eject() {
 
 function updateNow() {
   const has = !!cur;
+  $('#deck').hidden = !has;
   ['#prevBtn', '#playBtn', '#nextBtn', '#ejectBtn', '#seek'].forEach(s => $(s).disabled = !has);
   $('#flipBtn').disabled = !has || cur.split >= cur.ts.length;
   $('#cassette').style.display = has ? '' : 'none';
@@ -1153,6 +1164,8 @@ function toast(msg, sticky) {
   if (!sticky) toastTimer = setTimeout(() => t.classList.remove('show'), 3200);
 }
 const deck = $('#deck');
+$('#deckToggle').onclick = () => { deck.classList.toggle('mini'); LS.set('tapeDeckMini', deck.classList.contains('mini') ? '1' : ''); };
+if (LS.get('tapeDeckMini')) deck.classList.add('mini');
 const setDeckH = () => document.documentElement.style.setProperty('--deck-h', deck.offsetHeight + 'px');
 if (window.ResizeObserver) new ResizeObserver(setDeckH).observe(deck); else window.addEventListener('resize', setDeckH);
 setDeckH();
