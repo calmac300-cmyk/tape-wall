@@ -7,7 +7,7 @@ A phone music app styled as a wall of cassette tapes. Each album is a tape spine
 `index.html` is a working single-file app (HTML/CSS/JS, no build step) — originally built in claude.ai as a design prototype, now set up as an installable PWA:
 - `manifest.json` — app name/icons/theme colors, `display: standalone`
 - `sw.js` — network-first service worker caching the app shell (`index.html`, `manifest.json`, `icons/icon.svg`) for offline load and installability
-- `icons/icon.svg` — placeholder cassette icon (SVG only; iOS "Add to Home Screen" doesn't render SVG touch icons, so the iOS home-screen icon currently falls back to a page screenshot — a real PNG icon is a known follow-up)
+- `icons/` — cassette icon: `icon.svg` plus generated PNGs (`icon-192.png`, `icon-512.png`, `icon-maskable-512.png`, `apple-touch-icon.png`), drawn with Pillow on the #c08f5c theme color
 
 Single-user only, decided [2026-09-23]: no accounts/backend. Storage stays IndexedDB, per-browser, per-device.
 
@@ -30,7 +30,6 @@ What it does today:
 - **iOS background playback:** It is unreliable when the Web Audio effect chain is active. Clean mode avoids the chain.
 - **Per-browser storage:** The library lives in one browser on one device (by design, for now — see "single-user only" above).
 - **No split tool:** Combined tapes cannot be separated again.
-- **No real PNG app icon yet:** manifest/touch-icon both point at the placeholder SVG.
 
 ## Context
 
