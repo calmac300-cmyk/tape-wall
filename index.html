@@ -190,7 +190,9 @@ dialog.jcard::backdrop{background:rgba(12,7,3,.62)}
 .pxsw{width:26px;height:26px;border-radius:50%;border:2px solid rgba(0,0,0,.2);padding:0;cursor:pointer;background:var(--c)}
 .pxsw.on{outline:3px solid var(--paper-ink);outline-offset:2px}
 .pixtools .eraser{width:26px;height:26px;border-radius:50%;border:2px solid rgba(0,0,0,.2);padding:0;cursor:pointer;background:repeating-conic-gradient(#d8d2c2 0% 25%,#c9c2ae 0% 50%) 50%/8px 8px}
-.pixtools .eraser.on{outline:3px solid var(--paper-ink);outline-offset:2px}
+.pixtools .eraser.on,.pixtools .picker.on{outline:3px solid var(--paper-ink);outline-offset:2px}
+.pixtools .picker{width:26px;height:26px;border-radius:50%;border:2px solid rgba(0,0,0,.2);padding:0;cursor:pointer;background:var(--paper);color:var(--paper-ink);display:grid;place-items:center}
+.pixtools .picker svg{width:16px;height:16px;fill:currentColor}
 .pixtools .clear{margin-left:auto;background:transparent;color:var(--danger);border:0;cursor:pointer;font-size:15px;padding:4px}
 .close{
   position:absolute;top:10px;right:10px;width:38px;height:38px;border-radius:50%;border:0;cursor:pointer;
@@ -774,7 +776,7 @@ function openEditor(a) {
       w: PIX_W, h: PIX_H,
       cells: (a.pixelArt && a.pixelArt.cells && a.pixelArt.cells.length === PIX_W * PIX_H) ? a.pixelArt.cells.slice() : new Array(PIX_W * PIX_H).fill(null)
     },
-    pixColor: PALETTE[0], pixErase: false
+    pixColor: PALETTE[0], pixErase: false, pixPick: false
   };
   const colors = [...new Set([a.color, ...PALETTE])];
   const sd = { ts: sidesOf(a).ts, autoSplit: sidesOf({ ...a, splitAt: null }).split };
@@ -812,6 +814,7 @@ function openEditor(a) {
         <div class="pixtools">
           ${PALETTE.map(c => `<button type="button" class="pxsw" data-pcolor="${c}" style="--c:${c}" aria-label="Pixel color ${c}"></button>`).join('')}
           <label class="custom">Custom<input type="color" id="pixColor" value="${PALETTE[0]}"></label>
+          <button type="button" class="picker" id="pixPicker" aria-label="Pick a color from the art" title="Pick a color from the art"><svg viewBox="0 0 24 24"><path d="M20.7 5.6l-2.3-2.3a1 1 0 0 0-1.4 0l-3 3-1.2-1.2-1.4 1.4 1 1L4 15.5V20h4.5l7.8-7.8 1 1 1.4-1.4-1.2-1.2 3-3a1 1 0 0 0 0-1.4zM7.7 18H6v-1.7l7-7 1.7 1.7z"/></svg></button>
           <button type="button" class="eraser" id="pixEraser" aria-label="Eraser"></button>
           <button type="button" class="clear" id="pixClear">Clear art</button>
         </div>
@@ -842,6 +845,7 @@ function openEditor(a) {
   const paintTools = () => {
     dlg.querySelectorAll('.pxsw').forEach(b => b.classList.toggle('on', !draft.pixErase && b.dataset.pcolor.toLowerCase() === draft.pixColor.toLowerCase()));
     $('#pixEraser').classList.toggle('on', draft.pixErase);
+    $('#pixPicker').classList.toggle('on', draft.pixPick);
   };
   const paintCell = cell => {
     draft.pixelArt.cells[+cell.dataset.i] = draft.pixErase ? null : draft.pixColor;
@@ -854,11 +858,18 @@ function openEditor(a) {
   $('#edTextColor').oninput = e => { draft.textColor = e.target.value; paint(); };
   $('#edReal').onchange = e => { draft.realTape = e.target.checked; };
   if ($('#edSplit')) $('#edSplit').onchange = e => { draft.splitAt = +e.target.value; };
-  $('#pixColor').oninput = e => { draft.pixColor = e.target.value; draft.pixErase = false; paintTools(); };
+  $('#pixColor').oninput = e => { draft.pixColor = e.target.value; draft.pixErase = false; draft.pixPick = false; paintTools(); };
   const grid = $('#pixGrid');
   grid.addEventListener('pointerdown', e => {
     const cell = e.target.closest('.pixcell'); if (!cell) return;
-    paintingPix = true; paintCell(cell); e.preventDefault();
+    e.preventDefault();
+    if (draft.pixPick) {
+      const c = draft.pixelArt.cells[+cell.dataset.i];
+      draft.pixPick = false;
+      if (c) { draft.pixColor = c; draft.pixErase = false; $('#pixColor').value = c; }
+      paintTools(); return;
+    }
+    paintingPix = true; paintCell(cell);
   });
   grid.addEventListener('pointermove', e => {
     if (!paintingPix) return;
@@ -871,8 +882,9 @@ function openEditor(a) {
     const sw = e.target.closest('.swatches .sw'); if (sw) { draft.color = sw.dataset.color; $('#edColor').value = draft.color; paint(); return; }
     const tsw = e.target.closest('.tsw'); if (tsw) { draft.textColor = tsw.dataset.textcolor || null; paint(); return; }
     const fo = e.target.closest('.fontopt'); if (fo) { draft.font = fo.dataset.font; paint(); return; }
-    const pxsw = e.target.closest('.pxsw'); if (pxsw) { draft.pixColor = pxsw.dataset.pcolor; draft.pixErase = false; $('#pixColor').value = draft.pixColor; paintTools(); return; }
-    if (e.target.closest('#pixEraser')) { draft.pixErase = true; paintTools(); return; }
+    const pxsw = e.target.closest('.pxsw'); if (pxsw) { draft.pixColor = pxsw.dataset.pcolor; draft.pixErase = false; draft.pixPick = false; $('#pixColor').value = draft.pixColor; paintTools(); return; }
+    if (e.target.closest('#pixEraser')) { draft.pixErase = true; draft.pixPick = false; paintTools(); return; }
+    if (e.target.closest('#pixPicker')) { draft.pixPick = !draft.pixPick; paintTools(); return; }
     const pxClear = e.target.closest('#pixClear');
     if (pxClear) {
       if (!pxClear.dataset.armed) { pxClear.dataset.armed = '1'; pxClear.textContent = 'Tap again to clear'; return; }
