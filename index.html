@@ -210,6 +210,12 @@ dialog.jcard::backdrop{background:rgba(12,7,3,.62)}
   display:grid;grid-template-columns:28px 1fr auto;gap:8px;width:100%;padding:7px 4px;border:0;border-radius:3px;
   background:transparent;color:inherit;text-align:left;cursor:pointer;font-size:17px;
 }
+.trkrow{display:flex;align-items:center;gap:2px}
+.trkrow .trk{flex:1;min-width:0}
+.skipbtn{flex:none;width:40px;height:36px;border:0;border-radius:3px;background:transparent;color:var(--paper-muted);cursor:pointer;font:600 17px/1 var(--type);text-decoration:line-through;opacity:.55}
+.skipbtn:hover{background:rgba(0,0,0,.07)}
+.trkrow.skip .skipbtn{opacity:1;color:var(--danger);background:rgba(155,42,26,.12)}
+.trkrow.skip .trk span:not(.n){text-decoration:line-through;opacity:.5}
 .trk:hover{background:rgba(0,0,0,.07)}
 .trk .n,.trk .d{color:var(--paper-muted);font-variant-numeric:tabular-nums}
 .jc-actions{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:20px}
@@ -634,7 +640,7 @@ $('#randomBtn').onclick = () => {
   if (!ts.length) { toast('That tape has no tracks.'); return; }
   const resumeIdx = a.lastTrackId ? ts.findIndex(x => x.id === a.lastTrackId) : -1;
   const resumable = resumeIdx >= 0 && a.lastPos > 3;
-  insert(a, resumable ? resumeIdx : 0, resumable ? a.lastPos : 0);
+  insert(a, resumable ? resumeIdx : firstPlayable(sidesOf(a).ts, 0, 1e9), resumable ? a.lastPos : 0);
   toast(`Pulled off the shelf: ${a.artist} – ${a.title}`);
 };
 $('#selAll').onclick = () => {
@@ -714,6 +720,7 @@ function sidesOf(a) {
   if (n <= 1) split = n;
   return { ts, split, auto: !(a.splitAt >= 1 && a.splitAt < n) };
 }
+const firstPlayable = (ts, from, to) => { for (let i = from; i < Math.min(to, ts.length); i++) if (!ts[i].skip) return i; return from; };
 function openCard(id) {
   const a = albums.find(x => x.id === id); if (!a) return;
   const { ts, split } = sidesOf(a);
@@ -727,7 +734,7 @@ function openCard(id) {
     if (!list.length) return '';
     const len = list.reduce((s, x) => s + (x.duration || 0), 0);
     return `<div class="side"><h3>${label}<span>${len ? fmt(len) : ''}</span></h3>` +
-      list.map((x, i) => `<button class="trk" data-i="${i + off}"><span class="n">${i + off + 1}</span><span>${esc(x.title)}${x.artist && norm(x.artist) !== norm(a.artist) ? `<small class="ta">${esc(x.artist)}</small>` : ''}</span><span class="d">${x.duration ? fmt(x.duration) : ''}</span></button>`).join('') + '</div>';
+      list.map((x, i) => `<div class="trkrow${x.skip ? ' skip' : ''}"><button class="trk" data-i="${i + off}"><span class="n">${i + off + 1}</span><span>${esc(x.title)}${x.artist && norm(x.artist) !== norm(a.artist) ? `<small class="ta">${esc(x.artist)}</small>` : ''}</span><span class="d">${x.duration ? fmt(x.duration) : ''}</span></button><button class="skipbtn" data-skip="${x.id}" aria-pressed="${!!x.skip}" aria-label="Skip this track in album play" title="Skip in album play">S</button></div>`).join('') + '</div>';
   };
   const resumeIdx = a.lastTrackId ? ts.findIndex(x => x.id === a.lastTrackId) : -1;
   const resumable = resumeIdx >= 0 && a.lastPos > 3;
@@ -748,13 +755,21 @@ function openCard(id) {
     </div>`;
   dlg.onclick = e => {
     if (e.target === dlg || e.target.closest('.close')) { dlg.close(); return; }
+    const sk = e.target.closest('[data-skip]');
+    if (sk) {
+      const t = tracks.get(sk.dataset.skip); if (!t) return;
+      t.skip = !t.skip; store.put('tracks', t);
+      sk.closest('.trkrow').classList.toggle('skip', t.skip); sk.setAttribute('aria-pressed', !!t.skip);
+      if (cur && cur.album.id === a.id) cur.ts = sidesOf(a).ts;
+      return;
+    }
     const trk = e.target.closest('.trk');
     const pl = e.target.closest('[data-play]');
     const rs = e.target.closest('[data-resume]');
     const rm = e.target.closest('[data-remove]');
     if (e.target.closest('[data-edit]')) { openEditor(a); return; }
     if (rs) { dlg.close(); insert(a, resumeIdx, a.lastPos); }
-    else if (trk || pl) { dlg.close(); insert(a, +(trk ? trk.dataset.i : pl.dataset.play)); }
+    else if (trk || pl) { dlg.close(); insert(a, trk ? +trk.dataset.i : firstPlayable(ts, +pl.dataset.play, pl.dataset.play === '0' ? split : ts.length)); }
     else if (rm) {
       if (!rm.dataset.armed) { rm.dataset.armed = '1'; rm.textContent = 'Tap again to remove'; return; }
       dlg.close(); removeAlbum(a);
@@ -1024,13 +1039,14 @@ async function play() {
 function next(auto) {
   if (!cur) return;
   clearTimeout(reversing); reversing = null;
-  const i = cur.idx + 1;
+  let i = cur.idx + 1;
+  while (i < cur.ts.length && cur.ts[i].skip) i++;
   if (i >= cur.ts.length) {
     clearResume(cur.album);
     if (auto) { toast('That’s the end of the tape.'); }
     return;
   }
-  if (auto && i === cur.split) {
+  if (auto && cur.idx < cur.split && i >= cur.split) {
     $('#nowSub').textContent = 'Auto-reverse to side B';
     reversing = setTimeout(() => { reversing = null; loadTrack(i, true); }, 1400);
     return;
@@ -1040,11 +1056,13 @@ function next(auto) {
 function prev() {
   if (!cur) return;
   if (audio.currentTime > 3) { audio.currentTime = 0; return; }
-  loadTrack(Math.max(0, cur.idx - 1), !audio.paused);
+  let j = cur.idx - 1;
+  while (j > 0 && cur.ts[j].skip) j--;
+  loadTrack(Math.max(0, j), !audio.paused);
 }
 function flip() {
   if (!cur || cur.split >= cur.ts.length) return;
-  loadTrack(cur.idx < cur.split ? cur.split : 0, !audio.paused);
+  loadTrack(cur.idx < cur.split ? firstPlayable(cur.ts, cur.split, cur.ts.length) : firstPlayable(cur.ts, 0, cur.split), !audio.paused);
 }
 function eject() {
   clearTimeout(reversing); reversing = null;
