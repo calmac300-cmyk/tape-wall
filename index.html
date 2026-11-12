@@ -281,6 +281,9 @@ dialog.jcard::backdrop{background:rgba(12,7,3,.62)}
   <div class="editbar" id="editbar" hidden>
     <span class="count" id="selCount">Tap tapes to select them</span>
     <button id="selAll">Select all</button>
+    <button id="saveLabels" title="Download your labels, pixel art and skipped tracks as a small file">Save labels</button>
+    <button id="loadLabels" title="Re-apply a saved labels file to tapes you have added back">Load labels</button>
+    <input type="file" id="labelsIn" accept=".json,application/json" hidden>
     <button id="combineBtn" disabled>Combine into one tape</button>
     <button id="removeSel" class="danger" disabled>Remove</button>
   </div>
@@ -632,6 +635,48 @@ function updateEditBar() {
   const r = $('#removeSel'); r.disabled = n < 1; r.textContent = 'Remove'; delete r.dataset.armed;
 }
 $('#editBtn').onclick = () => setEditing(!editing);
+const LABEL_FIELDS = ['title', 'artist', 'year', 'color', 'font', 'textColor', 'realTape', 'splitAt', 'pixelArt'];
+$('#saveLabels').onclick = () => {
+  const data = { app: 'tape-wall-labels', version: 1, saved: new Date().toISOString(), albums: albums.map(a => {
+    const o = {}; LABEL_FIELDS.forEach(k => { if (a[k] != null && a[k] !== '') o[k] = a[k]; });
+    o.tracks = sidesOf(a).ts.map(t => ({ title: t.title, skip: !!t.skip }));
+    return o;
+  }) };
+  const url = URL.createObjectURL(new Blob([JSON.stringify(data)], { type: 'application/json' }));
+  const l = document.createElement('a'); l.href = url; l.download = 'tape-wall-labels.json'; document.body.appendChild(l); l.click(); l.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+  toast('Saved labels for ' + data.albums.length + ' tapes. Keep the file somewhere safe.');
+};
+$('#loadLabels').onclick = () => $('#labelsIn').click();
+$('#labelsIn').onchange = async e => {
+  const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+  let data; try { data = JSON.parse(await f.text()); } catch { data = null; }
+  if (!data || data.app !== 'tape-wall-labels' || !Array.isArray(data.albums)) { toast('That is not a Tape wall labels file.'); return; }
+  const used = new Set(); let n = 0;
+  const titles = a => new Set(sidesOf(a).ts.map(t => norm(t.title)));
+  for (const s of data.albums) {
+    const sk = norm(s.artist) + '|' + norm(s.title), st = new Set((s.tracks || []).map(t => norm(t.title)));
+    let best = albums.find(a => !used.has(a.id) && (a.key === sk || norm(a.artist) + '|' + norm(a.title) === sk));
+    if (!best) {
+      let bs = 0.6;
+      for (const a of albums) {
+        if (used.has(a.id)) continue;
+        const at = titles(a), inter = [...at].filter(x => st.has(x)).length, sc = inter / (at.size + st.size - inter || 1);
+        if (sc >= bs) { bs = sc; best = a; }
+      }
+    }
+    if (!best) continue;
+    used.add(best.id); n++;
+    LABEL_FIELDS.forEach(k => { best[k] = s[k] != null ? s[k] : (k === 'realTape' ? false : null); });
+    if (!best.title) best.title = s.title || 'Untitled'; if (!best.artist) best.artist = s.artist || 'Unknown artist';
+    best.key = norm(best.artist) + '|' + norm(best.title);
+    await store.put('albums', best);
+    const skipByTitle = new Map((s.tracks || []).map(t => [norm(t.title), !!t.skip]));
+    for (const t of sidesOf(best).ts) { const v = skipByTitle.get(norm(t.title)); if (v !== undefined && !!t.skip !== v) { t.skip = v; await store.put('tracks', t); } }
+  }
+  renderWall();
+  toast(n ? 'Applied saved labels to ' + n + ' of ' + albums.length + ' tapes.' : 'No tapes on the wall matched that file. Add the tapes first, then load labels.');
+};
 $('#randomBtn').onclick = () => {
   if (!albums.length) return;
   const pool = cur && albums.length > 1 ? albums.filter(x => x.id !== cur.album.id) : albums;
